@@ -158,4 +158,22 @@ export const handleApiError = (error: any): ApiError => {
   };
 };
 
+// Интерфейсы для запросов
+export interface QueryRequest {
+  question: string;
+}
+
+export interface QueryResponse {
+  id: number;
+  question: string;
+  answer: string;
+  created_at: string;
+}
+
+// API методы для работы с запросами
+export const submitQuery = async (question: string): Promise<QueryResponse> => {
+  const response = await api.post<QueryResponse>('/queries', { question });
+  return response.data;
+};
+
 export default api;
