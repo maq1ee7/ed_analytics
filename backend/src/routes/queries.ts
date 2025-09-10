@@ -10,6 +10,40 @@ interface SubmitQueryRequest {
   question: string;
 }
 
+// Получение истории запросов пользователя
+router.get('/', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Проверяем, что пользователь аутентифицирован
+    if (!req.user) {
+      res.status(401).json({
+        error: 'Authentication required',
+        message: 'User must be authenticated to get queries'
+      });
+      return;
+    }
+
+    // Получаем запросы пользователя
+    const queries = await QueryModel.findByUserId(req.user.id);
+
+    // Возвращаем список запросов
+    res.json({
+      queries: queries.map(query => ({
+        id: query.id,
+        question: query.question,
+        answer: query.answer,
+        created_at: query.created_at
+      }))
+    });
+
+  } catch (error) {
+    console.error('Get queries error:', error);
+    res.status(500).json({
+      error: 'Failed to get queries',
+      message: 'Internal server error during queries retrieval'
+    });
+  }
+});
+
 // Создание нового запроса
 router.post('/', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {

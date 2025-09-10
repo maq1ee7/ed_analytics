@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api, { handleApiError } from '../utils/api';
+import QueriesHistory from '../components/QueriesHistory';
 
 interface DashboardData {
   message: string;
@@ -104,9 +105,17 @@ const DashboardPage: React.FC = () => {
         </div>
       </nav>
 
-      {/* Основной контент */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
+      {/* Основной контент с боковой панелью */}
+      <div className="flex" style={{ height: 'calc(100vh - 4rem)' }}>
+        {/* Левая панель - История запросов */}
+        <div className="w-1/4 min-w-80">
+          <QueriesHistory />
+        </div>
+
+        {/* Правая панель - Основной контент */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-6xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div className="px-4 py-6 sm:px-0">
           {error ? (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
               <strong className="font-bold">Ошибка загрузки данных</strong>
@@ -200,8 +209,10 @@ const DashboardPage: React.FC = () => {
               </div>
             </div>
           )}
-        </div>
-      </main>
+            </div>
+          </div>
+        </main>
+      </div>
     </div>
   );
 };

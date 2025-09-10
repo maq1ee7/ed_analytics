@@ -170,10 +170,19 @@ export interface QueryResponse {
   created_at: string;
 }
 
+export interface UserQueriesResponse {
+  queries: QueryResponse[];
+}
+
 // API методы для работы с запросами
 export const submitQuery = async (question: string): Promise<QueryResponse> => {
   const response = await api.post<QueryResponse>('/queries', { question });
   return response.data;
+};
+
+export const getUserQueries = async (): Promise<QueryResponse[]> => {
+  const response = await api.get<UserQueriesResponse>('/queries');
+  return response.data.queries;
 };
 
 export default api;
