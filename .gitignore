@@ -1,0 +1,159 @@
+# =================================
+# ED Analytics - .gitignore
+# =================================
+
+# Dependencies
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Production builds
+dist/
+build/
+backend/dist/
+frontend/dist/
+frontend/build/
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+backend/.env*
+frontend/.env*
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory
+coverage/
+*.lcov
+.nyc_output
+
+# Dependency caches
+.npm
+.yarn/cache
+.pnp
+.pnp.js
+
+# ESLint cache
+.eslintcache
+
+# TypeScript
+*.tsbuildinfo
+.tscache
+
+# Build caches (Vite, Webpack, etc.)
+.cache/
+.parcel-cache/
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Vite
+frontend/.vite/
+
+# Package manager files
+*.tgz
+.yarn-integrity
+# Не игнорируем lock файлы для стабильности сборки
+# package-lock.json
+# yarn.lock  
+# pnpm-lock.yaml
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Docker (не игнорируем .dockerignore - он нужен для сборки)
+# .dockerignore
+
+# Temporary folders
+tmp/
+temp/
+.tmp/
+
+# SSH keys and certificates
+*.pem
+*.key
+*.crt
+*.cert
+
+# Backup files
+*.backup
+*.bak
+*.orig
+
+# Archive files
+*.zip
+*.tar.gz
+*.tar.bz2
+*.rar
+*.7z
+
+# =================================
+# ED Analytics специфичные файлы
+# =================================
+
+# Локальные скрипты разработчика
+scripts/local-*
+scripts/dev-*
+scripts/test-*
+
+# Конфигурация сервера (содержит приватные данные)
+config.sh
+
+# Файлы конфигурации разработки
+.vscode/settings.json
+.cursor/
+
+# Логи деплоя
+deploy.log
+update.log
+
+# Временные файлы Docker
+get-docker.sh
+docker-compose.override.yml
+
+# Файлы от IDE
+*.code-workspace
+
+# Локальные заметки разработчика
+NOTES.md
+TODO.md
+CHANGELOG.local.md
+
+# Сертификаты и ключи SSH (если будут добавлены)
+ssh/
+certs/
+*.pem.local
+
+
