@@ -9,7 +9,9 @@ dotenv.config();
 
 // Импорт роутов
 import authRoutes from './routes/auth';
+import queryRoutes from './routes/queries';
 import { authenticateToken } from './middleware/auth';
+import { runMigrations } from './utils/migrations';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '5000', 10);
@@ -41,6 +43,9 @@ app.use((req, res, next) => {
 
 // Роуты авторизации (публичные)
 app.use('/api/auth', authRoutes);
+
+// Роуты запросов (защищенные)
+app.use('/api/queries', queryRoutes);
 
 // API роуты (защищенные)
 app.get('/api/hello', authenticateToken, (req, res) => {
@@ -77,10 +82,29 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   });
 });
 
+// Функция запуска сервера с миграциями
+const startServer = async (): Promise<void> => {
+  try {
+    console.log('🏁 Starting ED Analytics Backend...');
+    
+    // Сначала выполняем миграции
+    await runMigrations();
+    
+    // Потом запускаем сервер
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log('');
+      console.log(`🚀 Backend server is running on port ${PORT}`);
+      console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🌐 API available at: http://0.0.0.0:${PORT}/api/hello`);
+      console.log(`🔗 External access: http://130.193.46.4:${PORT}/api/hello`);
+      console.log('');
+    });
+    
+  } catch (error) {
+    console.error('💥 Failed to start server:', error);
+    process.exit(1); // Завершаем процесс если миграции упали
+  }
+};
+
 // Запуск сервера
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Backend server is running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 API available at: http://0.0.0.0:${PORT}/api/hello`);
-  console.log(`🔗 External access: http://130.193.46.4:${PORT}/api/hello`);
-});
+startServer();

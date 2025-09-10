@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api, { handleApiError } from '../utils/api';
 
@@ -15,6 +16,7 @@ interface DashboardData {
 
 const DashboardPage: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -48,6 +50,10 @@ const DashboardPage: React.FC = () => {
     if (e.key === 'Enter' || e.key === ' ') {
       handleLogout();
     }
+  };
+
+  const handleAskQuestion = (): void => {
+    navigate('/query');
   };
 
 
@@ -135,6 +141,16 @@ const DashboardPage: React.FC = () => {
                             {dashboardData.environment}
                           </p>
                         </div>
+                      </div>
+                      
+                      {/* Кнопка "Задать вопрос" */}
+                      <div className="pt-4 border-t border-gray-200">
+                        <button
+                          onClick={handleAskQuestion}
+                          className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        >
+                          📊 Задать вопрос для анализа
+                        </button>
                       </div>
                     </div>
                   )}

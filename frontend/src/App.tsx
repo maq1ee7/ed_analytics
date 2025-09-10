@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import QueryPage from './pages/QueryPage';
 
 const App: React.FC = () => {
   return (
@@ -20,6 +21,15 @@ const App: React.FC = () => {
               element={
                 <ProtectedRoute>
                   <DashboardPage />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/query" 
+              element={
+                <ProtectedRoute>
+                  <QueryPage />
                 </ProtectedRoute>
               } 
             />
