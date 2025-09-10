@@ -1,5 +1,9 @@
 # ED Analytics
 
+### Тестовая учетная запись:
+- **Логин:** testuser
+- **Пароль:** password123
+
 ### Проверка версий
 
 ```bash
@@ -56,13 +60,16 @@ cd ed_analytics
 - React 18 + TypeScript
 - Vite 5.x
 - TailwindCSS 3.x (utility-first CSS)
-- Axios (HTTP клиент)
+- React Router (маршрутизация)
+- Axios (HTTP клиент с авто-обновлением токенов)
 
 **Backend:**
 - Node.js 18+ + Express.js
 - TypeScript 5.x
+- PostgreSQL 15 (база данных пользователей)
+- JWT авторизация (access + refresh токены)
+- bcrypt (хеширование паролей)
 - CORS + Helmet (безопасность)
-- Автоопределение окружения
 
 **DevOps:**
 - Docker + Docker Compose v2
@@ -103,8 +110,21 @@ ed_analytics/
 
 ### Backend (Express)
 
-- `GET /api/hello` - Тестовый endpoint, возвращает приветствие
+**Публичные endpoints:**
+- `POST /api/auth/login` - Авторизация пользователя
+- `POST /api/auth/refresh` - Обновление access токена
 - `GET /health` - Проверка здоровья сервиса
+
+**Защищенные endpoints (требуют авторизации):**
+- `GET /api/hello` - Тестовый endpoint, возвращает приветствие
+- `POST /api/auth/logout` - Выход из системы
+- `GET /api/auth/me` - Информация о текущем пользователе
+- `GET /api/auth/verify` - Проверка валидности токена
+
+### Фронтенд маршруты
+
+- `/login` - Страница авторизации (публичная)
+- `/dashboard` - Главная страница (защищенная)
 
 ### Проверка логов
 
