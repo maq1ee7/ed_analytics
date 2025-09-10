@@ -11,8 +11,9 @@ COPY package*.json ./
 # Устанавливаем зависимости (включая dev для сборки)
 RUN npm install
 
-# Копируем исходный код
-COPY . .
+# Копируем только необходимые файлы для сборки
+COPY src/ ./src/
+COPY tsconfig.json ./
 
 # Собираем проект
 RUN npm run build

@@ -2,9 +2,14 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
 
 // Загружаем переменные окружения
 dotenv.config();
+
+// Импорт роутов
+import authRoutes from './routes/auth';
+import { authenticateToken } from './middleware/auth';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '5000', 10);
@@ -26,6 +31,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(cookieParser());
 
 // Логирование запросов
 app.use((req, res, next) => {
@@ -33,12 +39,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// API роуты
-app.get('/api/hello', (req, res) => {
+// Роуты авторизации (публичные)
+app.use('/api/auth', authRoutes);
+
+// API роуты (защищенные)
+app.get('/api/hello', authenticateToken, (req, res) => {
   res.json({
     message: 'Hello World from Backend!',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    user: req.user
   });
 });
 
