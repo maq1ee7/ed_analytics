@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import QueriesHistory from '../components/QueriesHistory';
+import ChartsGrid from '../components/Dashboard/ChartsGrid';
 
 const DashboardPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -64,9 +65,9 @@ const DashboardPage: React.FC = () => {
 
         {/* Правая панель - Основной контент */}
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-6xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
             <div className="px-4 py-6 sm:px-0">
-              {/* Основной контент будет добавлен здесь */}
+              <ChartsGrid />
             </div>
           </div>
         </main>
