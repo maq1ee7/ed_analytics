@@ -9,7 +9,10 @@ export interface HistogramData {
   frequency: number;
 }
 
+import { RegionCode } from '../constants/regions';
+
 export interface RegionTemperatureData {
+  regionCode: RegionCode;
   region: string;
   temperature: number;
   color: string;
@@ -27,4 +30,22 @@ export interface ChartConfig {
       enabled: boolean;
     };
   };
+}
+
+export interface RadarChartDataPoint {
+  regionCode: RegionCode;
+  regionName: string;
+  values: number[]; // Значения по каждой оси (d1-d10)
+  color: string;
+}
+
+export interface RadarChartData {
+  year: number;
+  regions: RadarChartDataPoint[];
+  axes: string[]; // Названия осей (d1, d2, d3, ...)
+  maxValue: number; // Максимальное значение для нормализации
+}
+
+export interface RadarChartDataset {
+  years: RadarChartData[];
 }

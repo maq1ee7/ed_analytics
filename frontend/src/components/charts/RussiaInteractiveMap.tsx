@@ -1,9 +1,15 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { RegionCode, RUSSIA_REGIONS, generateStableTemperatureData } from '../../constants/regions';
 
 const RussiaInteractiveMap: React.FC = () => {
-  const [hoveredRegion, setHoveredRegion] = useState<string | null>(null);
+  const [hoveredRegion, setHoveredRegion] = useState<RegionCode | null>(null);
 
-  const handleRegionMouseEnter = useCallback((regionCode: string) => {
+  // Генерируем стабильные данные один раз при инициализации компонента
+  const regionTemperatureData = useMemo(() => {
+    return generateStableTemperatureData(12345); // Используем фиксированный seed для стабильности
+  }, []); // Пустой массив зависимостей означает, что данные генерируются только один раз
+
+  const handleRegionMouseEnter = useCallback((regionCode: RegionCode) => {
     setHoveredRegion(regionCode);
   }, []);
 
@@ -11,102 +17,22 @@ const RussiaInteractiveMap: React.FC = () => {
     setHoveredRegion(null);
   }, []);
 
-  const getRegionData = (regionCode: string) => {
-    // Моковые данные для демонстрации
-    const mockData: { [key: string]: { title: string; temperature: number; population?: number } } = {
-      'RU-MOW': { title: 'Москва', temperature: 12},
-      'RU-SPE': { title: 'Санкт-Петербург', temperature: 11},
-      'RU-NEN': { title: 'Ненецкий АО', temperature: -15},
-      'RU-YAR': { title: 'Ярославская область', temperature: 23},
-      'RU-CHE': { title: 'Челябинская область', temperature: 19},
-      'RU-ULY': { title: 'Ульяновская область', temperature: 10},
-      'RU-TYU': { title: 'Тюменская область', temperature: 15},
-      'RU-TUL': { title: 'Тульская область', temperature: 18},
-      'RU-SVE': { title: 'Свердловская область', temperature: 16},
-      'RU-RYA': { title: 'Рязанская область', temperature: 12},
-      'RU-ORL': { title: 'Орловская область', temperature: 22},
-      'RU-OMS': { title: 'Омская область', temperature: 6},
-      'RU-NGR': { title: 'Новгородская область', temperature: 5},
-      'RU-LIP': { title: 'Липецкая область', temperature: 5},
-      'RU-KRS': { title: 'Курская область', temperature: 6},
-      'RU-KGN': { title: 'Курганская область', temperature: 5},
-      'RU-KGD': { title: 'Калининградская область', temperature: 29},
-      'RU-IVA': { title: 'Ивановская область', temperature: 15},
-      'RU-BRY': { title: 'Брянская область', temperature: 6},
-      'RU-AST': { title: 'Астраханская область', temperature: 28},
-      'RU-KHA': { title: 'Хабаровский край', temperature: 18},
-      'RU-CE': { title: 'Чеченская Республика', temperature: 9},
-      'RU-UD': { title: 'Удмуртская Республика', temperature: 9},
-      'RU-SE': { title: 'Республика Северная Осетия — Алания', temperature: 21},
-      'RU-MO': { title: 'Республика Мордовия', temperature: 6},
-      'RU-KR': { title: 'Республика Карелия', temperature: 1},
-      'RU-KL': { title: 'Республика Калмыкия', temperature: 17},
-      'RU-IN': { title: 'Республика Ингушетия', temperature: 23},
-      'RU-AL': { title: 'Республика Алтай', temperature: 14},
-      'RU-BA': { title: 'Республика Башкортостан', temperature: 15},
-      'RU-AD': { title: 'Республика Адыгея', temperature: 8},
-      'RU-CR': { title: 'Республика Крым', temperature: 16},
-      'RU-SEV': { title: 'Севастополь', temperature: 23},
-      'RU-KO': { title: 'Республика Коми', temperature: 4},
-      'RU-KIR': { title: 'Кировская область', temperature: 18},
-      'RU-PNZ': { title: 'Пензенская область', temperature: 15},
-      'RU-TAM': { title: 'Тамбовская область', temperature: 5},
-      'RU-MUR': { title: 'Мурманская область', temperature: -13},
-      'RU-LEN': { title: 'Ленинградская область', temperature: 14},
-      'RU-VLG': { title: 'Вологодская область', temperature: 10},
-      'RU-KOS': { title: 'Костромская область', temperature: 17},
-      'RU-PSK': { title: 'Псковская область', temperature: 3},
-      'RU-ARK': { title: 'Архангельская область', temperature: 6},
-      'RU-YAN': { title: 'Ямало-Ненецкий АО', temperature: -12},
-      'RU-CHU': { title: 'Чукотский АО', temperature: -15},
-      'RU-YEV': { title: 'Еврейская автономная область', temperature: 21},
-      'RU-TY': { title: 'Республика Тыва', temperature: 19},
-      'RU-SAK': { title: 'Сахалинская область', temperature: -4},
-      'RU-AMU': { title: 'Амурская область', temperature: 9},
-      'RU-BU': { title: 'Республика Бурятия', temperature: 7},
-      'RU-KK': { title: 'Республика Хакасия', temperature: 5},
-      'RU-KEM': { title: 'Кемеровская область', temperature: 13},
-      'RU-NVS': { title: 'Новосибирская область', temperature: 0},
-      'RU-ALT': { title: 'Алтайский край', temperature: 11},
-      'RU-DA': { title: 'Республика Дагестан', temperature: 21},
-      'RU-STA': { title: 'Ставропольский край', temperature: 25},
-      'RU-KB': { title: 'Кабардино-Балкарская Республика ', temperature: 17},
-      'RU-KC': { title: 'Карачаево-Черкесская Республика', temperature: 17},
-      'RU-KDA': { title: 'Краснодарский край', temperature: 15},
-      'RU-ROS': { title: 'Ростовская область', temperature: 23},
-      'RU-SAM': { title: 'Самарская область', temperature: 5},
-      'RU-TA': { title: 'Республика Татарстан', temperature: 16},
-      'RU-ME': { title: 'Республика Марий Эл', temperature: 5},
-      'RU-CU': { title: 'Чувашская Республика', temperature: 10},
-      'RU-NIZ': { title: 'Нижегородская область', temperature: 17},
-      'RU-VLA': { title: 'Владимирская область', temperature: 8},
-      'RU-MOS': { title: 'Московская область', temperature: 14},
-      'RU-KLU': { title: 'Калужская область', temperature: 9},
-      'RU-BEL': { title: 'Белгородская область', temperature: 22},
-      'RU-ZAB': { title: 'Забайкальский край', temperature: -2},
-      'RU-PRI': { title: 'Приморский край', temperature: 19},
-      'RU-KAM': { title: 'Камчатский край', temperature: 0},
-      'RU-MAG': { title: 'Магаданская область', temperature: -12},
-      'RU-SA': { title: 'Республика Саха (Якутия)', temperature: -8},
-      'RU-KYA': { title: 'Красноярский край', temperature: 0},
-      'RU-ORE': { title: 'Оренбургская область', temperature: 8},
-      'RU-SAR': { title: 'Саратовская область', temperature: 20},
-      'RU-VGG': { title: 'Волгоградская область', temperature: 16},
-      'RU-VOR': { title: 'Воронежская область', temperature: 23},
-      'RU-SMO': { title: 'Смоленская область', temperature: 19},
-      'RU-TVE': { title: 'Тверская область', temperature: 14},
-      'RU-PER': { title: 'Пермский край', temperature: 14},
-      'RU-KHM': { title: 'Ханты-Мансийский АО - Югра', temperature: 22},
-      'RU-TOM': { title: 'Томская область', temperature: 6},
-      'RU-IRK': { title: 'Иркутская область', temperature: 2},
-      'RU-HR': { title: 'Херсонская область', temperature: 33},
-      'RU-ZP': { title: 'Запорожская область', temperature: 43},
-      'RU-DON': { title: 'Донецкая область', temperature: 45},
-      'RU-LUG': { title: 'Луганская область', temperature: 42},
-    };
+  const getRegionData = useCallback((regionCode: RegionCode) => {
+    const regionInfo = RUSSIA_REGIONS[regionCode];
+    if (!regionInfo) {
+      return { title: 'Неизвестный регион', temperature: 0 };
+    }
 
-    return mockData[regionCode] || { title: 'Неизвестный регион', temperature: 0 };
-  };
+    // Используем предгенерированную температуру
+    const temperature = regionTemperatureData[regionCode] || 0;
+
+    return {
+      title: regionInfo.title,
+      temperature,
+      type: regionInfo.type,
+      federalDistrict: regionInfo.federalDistrict
+    };
+  }, [regionTemperatureData]);
 
   const getTemperatureColor = (temperature: number) => {
     // Цветовая схема на основе температуры
@@ -128,17 +54,15 @@ const RussiaInteractiveMap: React.FC = () => {
     return '#dc2626';                         // Жарко - ярче красный
   };
 
-  const getRegionFill = (regionCode: string) => {
+  const getRegionFill = useCallback((regionCode: RegionCode) => {
     const regionData = getRegionData(regionCode);
     return getTemperatureColor(regionData.temperature);
-  };
+  }, [getRegionData]);
 
-  const getRegionHoverFill = (regionCode: string) => {
-
+  const getRegionHoverFill = useCallback((regionCode: RegionCode) => {
     const regionData = getRegionData(regionCode);
     return getTemperatureHoverColor(regionData.temperature);
-
-  };
+  }, [getRegionData]);
 
   return (
     <div className="relative max-w-4xl mx-auto p-5 bg-white rounded-lg shadow-lg">
@@ -155,12 +79,30 @@ const RussiaInteractiveMap: React.FC = () => {
       {/* Информация о регионе */}
       {hoveredRegion && (
         <div className="absolute z-50 left-1.5 top-20 transition-all duration-300 opacity-100">
-          <div className="bg-white px-3 py-2 rounded-lg shadow-lg border border-blue-200 whitespace-nowrap">
-            <div className="text-sm md:text-lg font-bold text-blue-700">
+          <div className="bg-white px-4 py-3 rounded-lg shadow-lg border border-blue-200 min-w-64">
+            <div className="text-sm md:text-lg font-bold text-blue-700 mb-2">
               {getRegionData(hoveredRegion).title}
             </div>
-            <div className="text-xs md:text-sm text-gray-600 mt-1">
-              Температура: {getRegionData(hoveredRegion).temperature > 0 ? '+' : ''}{getRegionData(hoveredRegion).temperature}°C
+            <div className="space-y-1 text-xs md:text-sm text-gray-600">
+              <div>
+                <span className="font-medium">Код:</span> {hoveredRegion}
+              </div>
+              <div>
+                <span className="font-medium">Тип:</span> {getRegionData(hoveredRegion).type}
+              </div>
+              <div>
+                <span className="font-medium">Федеральный округ:</span> {getRegionData(hoveredRegion).federalDistrict}
+              </div>
+              <div>
+                <span className="font-medium">Температура:</span> 
+                <span className={`ml-1 font-semibold ${
+                  getRegionData(hoveredRegion).temperature > 20 ? 'text-red-600' :
+                  getRegionData(hoveredRegion).temperature > 0 ? 'text-green-600' :
+                  'text-blue-600'
+                }`}>
+                  {getRegionData(hoveredRegion).temperature > 0 ? '+' : ''}{getRegionData(hoveredRegion).temperature}°C
+                </span>
+              </div>
             </div>
           </div>
         </div>
