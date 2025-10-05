@@ -1,4 +1,5 @@
-import { ChartPoint, HistogramData, RegionTemperatureData } from '../types/charts';
+import { ChartPoint, HistogramData, RegionTemperatureData, RadarChartDataset, RadarChartData, RadarChartDataPoint } from '../types/charts';
+import { RUSSIA_REGIONS, REGION_CODES } from '../constants/regions';
 
 // Генератор экспоненциальных данных с шумами
 export const generateExponentialData = (pointCount: number = 50): ChartPoint[] => {
@@ -60,28 +61,35 @@ export const generateNormalDistributionData = (bins: number = 25): HistogramData
   return data;
 };
 
+// Простая функция для генерации псевдослучайных чисел с seed
+const seededRandom = (seed: number) => {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+};
+
 // Генератор температурных данных для регионов России
-export const generateRussiaTemperatureData = (): RegionTemperatureData[] => {
-  const regions = [
-    'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
-    'Нижний Новгород', 'Челябинск', 'Самара', 'Омск', 'Ростов-на-Дону',
-    'Уфа', 'Красноярск', 'Воронеж', 'Пермь', 'Волгоград',
-    'Краснодар', 'Саратов', 'Тюмень', 'Тольятти', 'Ижевск',
-    'Барнаул', 'Ульяновск', 'Иркутск', 'Хабаровск', 'Ярославль',
-    'Владивосток', 'Махачкала', 'Томск', 'Оренбург', 'Кемерово'
-  ];
+export const generateRussiaTemperatureData = (seed: number = 12345): RegionTemperatureData[] => {
+  let currentSeed = seed;
   
-  const data: RegionTemperatureData[] = regions.map(region => {
-    // Генерируем температуру в диапазоне от -35°C до +35°C
-    const baseTemp = (Math.random() - 0.5) * 60; // -30 to +30
-    const noise = (Math.random() - 0.5) * 10; // ±5 градусов шума
+  // Выбираем первые 30 регионов для демонстрации (стабильный выбор)
+  const selectedRegionCodes = REGION_CODES.slice(0, 30);
+  
+  const data: RegionTemperatureData[] = selectedRegionCodes.map(regionCode => {
+    const regionInfo = RUSSIA_REGIONS[regionCode];
+    
+    // Генерируем температуру с использованием seed для стабильности
+    currentSeed++;
+    const baseTemp = (seededRandom(currentSeed) - 0.5) * 60; // -30 to +30
+    currentSeed++;
+    const noise = (seededRandom(currentSeed) - 0.5) * 10; // ±5 градусов шума
     const temperature = parseFloat((baseTemp + noise).toFixed(1));
     
     // Определяем цвет на основе температуры
     const color = getTemperatureColor(temperature);
     
     return {
-      region,
+      regionCode,
+      region: regionInfo.title,
       temperature,
       color
     };
@@ -120,4 +128,84 @@ export const interpolateColor = (color1: string, color2: string, factor: number)
   const b = Math.round(b1 + (b2 - b1) * factor);
   
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+};
+
+// Предустановленные цвета для регионов в радиальной диаграмме
+const RADAR_CHART_COLORS = [
+  '#22d3ee', // cyan-400
+  '#f87171', // red-400
+  '#4ade80', // green-400
+  '#94a3b8', // slate-400
+  '#a855f7', // purple-500
+  '#f59e0b', // amber-500
+  '#ef4444', // red-500
+  '#06b6d4', // cyan-500
+  '#10b981', // emerald-500
+  '#8b5cf6', // violet-500
+  '#f97316', // orange-500
+  '#84cc16', // lime-500
+  '#ec4899', // pink-500
+  '#6366f1', // indigo-500
+  '#14b8a6'  // teal-500
+];
+
+// Генератор данных для радиальной диаграммы
+export const generateRadarChartData = (
+  years: number[] = [2021, 2022, 2023, 2024],
+  regionsPerYear: { [year: number]: number } = {},
+  seed: number = 54321
+): RadarChartDataset => {
+  let currentSeed = seed;
+  const axes = ['d1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8', 'd9', 'd10'];
+  
+  const yearsData: RadarChartData[] = years.map((year, yearIndex) => {
+    // Определяем количество регионов для этого года (от 4 до 7)
+    const regionCount = regionsPerYear[year] || Math.min(4 + yearIndex, 7);
+    
+    // Выбираем случайные регионы
+    const selectedRegions = REGION_CODES
+      .sort(() => seededRandom(currentSeed++) - 0.5)
+      .slice(0, regionCount);
+    
+    const regions: RadarChartDataPoint[] = selectedRegions.map((regionCode, index) => {
+      const regionInfo = RUSSIA_REGIONS[regionCode];
+      const color = RADAR_CHART_COLORS[index % RADAR_CHART_COLORS.length];
+      
+      // Генерируем значения для каждой оси (от 0.3 до 1.0)
+      const values = axes.map(() => {
+        const baseValue = 0.3 + seededRandom(currentSeed++) * 0.7;
+        // Добавляем тренд роста по годам
+        const yearTrend = yearIndex * 0.02;
+        return Math.min(1.0, Math.max(0.1, baseValue + yearTrend));
+      });
+      
+      return {
+        regionCode,
+        regionName: regionInfo.title,
+        values: values.map(v => parseFloat(v.toFixed(2))),
+        color
+      };
+    });
+    
+    return {
+      year,
+      axes,
+      maxValue: 1.0,
+      regions
+    };
+  });
+  
+  return { years: yearsData };
+};
+
+// Загрузка mock-данных из JSON файла
+export const loadRadarChartMockData = async (): Promise<RadarChartDataset> => {
+  try {
+    const response = await fetch('/data/radarChartMockData.json');
+    const data = await response.json();
+    return data as RadarChartDataset;
+  } catch (error) {
+    console.warn('Не удалось загрузить mock-данные, используем сгенерированные:', error);
+    return generateRadarChartData();
+  }
 };
