@@ -1,4 +1,4 @@
-import { ChartPoint, HistogramData, RegionTemperatureData, RadarChartDataset, RadarChartData, RadarChartDataPoint } from '../types/charts';
+import { ChartPoint, HistogramData, RegionTemperatureData, RadarChartDataset, RadarChartData, RadarChartDataPoint, FederalSharesData, FederalSharesDataPoint } from '../types/charts';
 import { RUSSIA_REGIONS, REGION_CODES } from '../constants/regions';
 
 // Генератор экспоненциальных данных с шумами
@@ -207,5 +207,79 @@ export const loadRadarChartMockData = async (): Promise<RadarChartDataset> => {
   } catch (error) {
     console.warn('Не удалось загрузить mock-данные, используем сгенерированные:', error);
     return generateRadarChartData();
+  }
+};
+
+// Предустановленные цвета для Federal Shares диаграммы
+const FEDERAL_SHARES_COLORS = [
+  '#22d3ee', // cyan-400 - d1
+  '#ef4444', // red-500 - d2
+  '#22c55e', // green-500 - d3
+  '#64748b', // slate-500 - d4
+  '#eab308', // yellow-500 - d5
+  '#dc2626', // red-600 - d6
+  '#7c2d12', // red-900 - d7
+  '#7e22ce', // purple-700 - d8
+  '#1e293b', // slate-800 - d9
+  '#ef4444'  // red-500 - d10
+];
+
+// Генератор данных для Federal Shares диаграммы (stacked)
+export const generateFederalSharesData = (
+  years: number[] = [2018, 2019, 2020],
+  seed: number = 98765
+): FederalSharesData => {
+  let currentSeed = seed;
+  const dimensions = ['d1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8', 'd9', 'd10'];
+  
+  const dimensionsData: FederalSharesDataPoint[] = dimensions.map((dimension, index) => {
+    const color = FEDERAL_SHARES_COLORS[index];
+    const values: { [year: number]: number } = {};
+    
+    // Генерируем значения так, чтобы сумма всех измерений была около 100%
+    // Каждое измерение получает от 3% до 18% от общего
+    const baseValue = 3 + seededRandom(currentSeed++) * 15;
+    
+    years.forEach(year => {
+      // Добавляем небольшие вариации по годам (±2%)
+      const yearVariation = (seededRandom(currentSeed++) - 0.5) * 4;
+      const value = Math.max(1, Math.min(25, baseValue + yearVariation));
+      values[year] = parseFloat(value.toFixed(1));
+    });
+    
+    return {
+      dimension,
+      color,
+      values
+    };
+  });
+  
+  // Нормализуем значения, чтобы сумма была ровно 100% для каждого года
+  years.forEach(year => {
+    const totalForYear = dimensionsData.reduce((sum, dim) => sum + dim.values[year], 0);
+    const scaleFactor = 100 / totalForYear;
+    
+    dimensionsData.forEach(dim => {
+      dim.values[year] = parseFloat((dim.values[year] * scaleFactor).toFixed(1));
+    });
+  });
+  
+  return {
+    title: 'Federal Shares by Year',
+    years,
+    dimensions: dimensionsData,
+    maxPercentage: 100
+  };
+};
+
+// Загрузка mock-данных для Federal Shares из JSON файла
+export const loadFederalSharesMockData = async (): Promise<FederalSharesData> => {
+  try {
+    const response = await fetch('/data/federalSharesMockData.json');
+    const data = await response.json();
+    return data as FederalSharesData;
+  } catch (error) {
+    console.warn('Не удалось загрузить Federal Shares mock-данные, используем сгенерированные:', error);
+    return generateFederalSharesData();
   }
 };

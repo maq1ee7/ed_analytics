@@ -49,3 +49,16 @@ export interface RadarChartData {
 export interface RadarChartDataset {
   years: RadarChartData[];
 }
+
+export interface FederalSharesDataPoint {
+  dimension: string; // d1, d2, d3, ... d10
+  values: { [year: number]: number }; // Значения по годам в процентах
+  color: string;
+}
+
+export interface FederalSharesData {
+  title: string;
+  years: number[]; // Список годов для отображения
+  dimensions: FederalSharesDataPoint[]; // Данные по каждому измерению d1-d10
+  maxPercentage: number; // Максимальное значение для масштабирования (обычно 100)
+}

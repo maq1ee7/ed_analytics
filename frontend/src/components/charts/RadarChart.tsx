@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Chart as ChartJS,
   RadialLinearScale,
@@ -9,7 +9,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Radar } from 'react-chartjs-2';
-import { RadarChartDataset, RadarChartData } from '../../types/charts';
+import { RadarChartDataset } from '../../types/charts';
 import { generateRadarChartData, loadRadarChartMockData } from '../../utils/mockDataGenerators';
 
 // Регистрируем компоненты Chart.js
