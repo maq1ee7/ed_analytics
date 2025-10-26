@@ -10,8 +10,13 @@ import {
   RadarChartDataFromJSON, 
   RussiaMapChartData 
 } from '../../types/charts';
+import { getDashboardByUid, handleApiError } from '../../utils/api';
 
-const ChartsGrid: React.FC = () => {
+interface ChartsGridProps {
+  uid?: string;
+}
+
+const ChartsGrid: React.FC<ChartsGridProps> = ({ uid }) => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,25 +25,37 @@ const ChartsGrid: React.FC = () => {
     const loadDashboardData = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch('/data/dashboardExample.json');
         
-        if (!response.ok) {
-          throw new Error('Не удалось загрузить данные дашборда');
+        if (uid) {
+          // Загружаем данные по UID из API
+          const response = await getDashboardByUid(uid);
+          // answer уже объект DashboardData (PostgreSQL JSONB автоматически парсится)
+          const data: DashboardData = response.answer as unknown as DashboardData;
+          setDashboardData(data);
+        } else {
+          // Загружаем статические данные (fallback)
+          const response = await fetch('/data/dashboardExample.json');
+          
+          if (!response.ok) {
+            throw new Error('Не удалось загрузить данные дашборда');
+          }
+          
+          const data: DashboardData = await response.json();
+          setDashboardData(data);
         }
         
-        const data: DashboardData = await response.json();
-        setDashboardData(data);
         setError(null);
       } catch (err) {
         console.error('Ошибка загрузки данных дашборда:', err);
-        setError(err instanceof Error ? err.message : 'Неизвестная ошибка');
+        const apiError = handleApiError(err);
+        setError(apiError.message || 'Неизвестная ошибка');
       } finally {
         setIsLoading(false);
       }
     };
 
     loadDashboardData();
-  }, []);
+  }, [uid]);
 
   if (isLoading) {
     return (
