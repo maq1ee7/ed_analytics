@@ -3,11 +3,16 @@ import { RegionCode, RUSSIA_REGIONS, generateStableTemperatureData, regionCoordi
 
 const RussiaInteractiveMap: React.FC = () => {
   const [hoveredRegion, setHoveredRegion] = useState<RegionCode | null>(null);
+  const [currentYearIndex, setCurrentYearIndex] = useState(0);
 
-  // Генерируем стабильные данные один раз при инициализации компонента
+  // Массив доступных годов
+  const years = useMemo(() => [2020, 2021, 2022, 2023, 2024], []);
+  const currentYear = years[currentYearIndex];
+
+  // Генерируем стабильные данные с учетом текущего года
   const regionTemperatureData = useMemo(() => {
-    return generateStableTemperatureData(12345); // Используем фиксированный seed для стабильности
-  }, []); // Пустой массив зависимостей означает, что данные генерируются только один раз
+    return generateStableTemperatureData(12345, currentYear);
+  }, [currentYear]); // Регенерируем данные при изменении года
 
   const handleRegionMouseEnter = useCallback((regionCode: RegionCode) => {
     setHoveredRegion(regionCode);
@@ -16,6 +21,18 @@ const RussiaInteractiveMap: React.FC = () => {
   const handleRegionMouseLeave = useCallback(() => {
     setHoveredRegion(null);
   }, []);
+
+  const handlePrevYear = useCallback(() => {
+    setCurrentYearIndex(prev => 
+      prev === 0 ? years.length - 1 : prev - 1
+    );
+  }, [years.length]);
+
+  const handleNextYear = useCallback(() => {
+    setCurrentYearIndex(prev => 
+      prev === years.length - 1 ? 0 : prev + 1
+    );
+  }, [years.length]);
 
   const getRegionData = useCallback((regionCode: RegionCode) => {
     const regionInfo = RUSSIA_REGIONS[regionCode];
@@ -66,19 +83,68 @@ const RussiaInteractiveMap: React.FC = () => {
 
   return (
     <div className="relative max-w-4xl mx-auto p-5 bg-white rounded-lg shadow-lg">
-      {/* Заголовок */}
-      <div className="mb-6">
-        <h3 className="text-2xl font-bold text-gray-900 mb-2">
-          Интерактивная карта России
-        </h3>
-        <p className="text-gray-600">
-          Наведите курсор на регион  для получения подробной информации
-        </p>
+      {/* Заголовок с каруселью годов */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">
+            Интерактивная карта России
+          </h3>
+          <p className="text-gray-600">
+            Наведите курсор на регион для получения подробной информации
+          </p>
+        </div>
+        
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={handlePrevYear}
+            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200"
+            aria-label="Предыдущий год"
+            tabIndex={0}
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          <div className="text-lg font-semibold text-gray-800 min-w-[60px] text-center">
+            {currentYear}
+          </div>
+          
+          <button
+            onClick={handleNextYear}
+            className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors duration-200"
+            aria-label="Следующий год"
+            tabIndex={0}
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Индикаторы годов */}
+      <div className="flex justify-center mb-4">
+        <div className="flex space-x-2">
+          {years.map((year, index) => (
+            <button
+              key={year}
+              onClick={() => setCurrentYearIndex(index)}
+              className={`w-3 h-3 rounded-full transition-colors duration-200 ${
+                index === currentYearIndex
+                  ? 'bg-blue-500'
+                  : 'bg-gray-300 hover:bg-gray-400'
+              }`}
+              aria-label={`Перейти к ${year} году`}
+              tabIndex={0}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Информация о регионе */}
       {hoveredRegion && (
-        <div className="absolute z-50 left-1.5 top-20 transition-all duration-300 opacity-100">
+        <div className="absolute z-50 left-1.5 top-32 transition-all duration-300 opacity-100">
           <div className="bg-white px-4 py-3 rounded-lg shadow-lg border border-blue-200 min-w-64">
             <div className="text-sm md:text-lg font-bold text-blue-700 mb-2">
               {getRegionData(hoveredRegion).title}
@@ -92,6 +158,9 @@ const RussiaInteractiveMap: React.FC = () => {
               </div>
               <div>
                 <span className="font-medium">Федеральный округ:</span> {getRegionData(hoveredRegion).federalDistrict}
+              </div>
+              <div>
+                <span className="font-medium">Год:</span> {currentYear}
               </div>
               <div>
                 <span className="font-medium">Температура:</span>
@@ -132,6 +201,11 @@ const RussiaInteractiveMap: React.FC = () => {
             );
           })}
         </svg>
+      </div>
+
+      {/* Информация о текущем годе */}
+      <div className="mt-4 text-center text-sm text-gray-600">
+        Показаны температурные данные за {currentYear} год
       </div>
     </div>
   );

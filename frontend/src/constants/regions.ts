@@ -737,11 +737,13 @@ const seededRandom = (seed: number): number => {
 /**
  * Генерирует стабильные температурные данные для всех регионов
  * @param seed - Начальное значение для генерации (по умолчанию 12345)
+ * @param year - Год для генерации данных (влияет на seed)
  * @returns Объект с температурами для каждого региона
  */
-export const generateStableTemperatureData = (seed: number = 12345): Record<RegionCode, number> => {
+export const generateStableTemperatureData = (seed: number = 12345, year?: number): Record<RegionCode, number> => {
   const data: Record<RegionCode, number> = {} as Record<RegionCode, number>;
-  let currentSeed = seed;
+  // Если передан год, используем его для модификации seed
+  let currentSeed = year ? seed + year * 1000 : seed;
   
   REGION_CODES.forEach(regionCode => {
     currentSeed++;
