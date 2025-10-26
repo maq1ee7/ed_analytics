@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -9,8 +9,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import { FederalSharesData } from '../../types/charts';
-import { generateFederalSharesData, loadFederalSharesMockData } from '../../utils/mockDataGenerators';
+import { FederalSharesChartData } from '../../types/charts';
 
 // Регистрируем компоненты Chart.js
 ChartJS.register(
@@ -23,54 +22,51 @@ ChartJS.register(
 );
 
 interface FederalSharesChartProps {
-  data?: FederalSharesData;
+  data?: FederalSharesChartData;
   className?: string;
 }
 
+// Цвета для индексов
+const INDEX_COLORS = [
+  '#3b82f6', // Синий
+  '#10b981', // Зелёный
+  '#ef4444', // Красный
+  '#f59e0b', // Оранжевый
+  '#8b5cf6', // Фиолетовый
+  '#ec4899', // Розовый
+  '#06b6d4', // Голубой
+  '#f97316', // Тёмно-оранжевый
+  '#14b8a6', // Бирюзовый
+  '#a855f7', // Пурпурный
+];
+
 const FederalSharesChart: React.FC<FederalSharesChartProps> = ({ data, className = '' }) => {
-  const [chartData, setChartData] = useState<FederalSharesData | null>(null);
-
-  // Загружаем данные при монтировании компонента
-  useEffect(() => {
-    const loadData = async () => {
-      if (data) {
-        setChartData(data);
-      } else {
-        try {
-          const mockData = await loadFederalSharesMockData();
-          setChartData(mockData);
-        } catch (error) {
-          console.error('Ошибка загрузки данных Federal Shares:', error);
-          // Fallback на сгенерированные данные
-          setChartData(generateFederalSharesData());
-        }
-      }
-    };
-
-    loadData();
-  }, [data]);
-
-  if (!chartData) {
+  if (!data || !data.indexes || data.indexes.length === 0) {
     return (
       <div className={`flex items-center justify-center h-96 ${className}`}>
-        <div className="text-gray-500">Загрузка данных...</div>
+        <div className="text-gray-500">Нет данных для отображения</div>
       </div>
     );
   }
 
   // Подготавливаем данные для Chart.js (stacked bar)
-  const chartJsData = {
-    labels: chartData.years.map(year => year.toString()),
-      datasets: chartData.dimensions.map(dimension => ({
-      label: dimension.dimension,
-      data: chartData.years.map(year => dimension.values[year] || 0),
-      backgroundColor: dimension.color,
-      borderColor: dimension.color,
-      borderWidth: 1,
-      borderRadius: 0,
-      borderSkipped: false,
-    }))
-  };
+  const chartJsData = useMemo(() => {
+    return {
+      labels: data.years.map(year => year.toString()),
+      datasets: data.indexes.map((indexData, idx) => {
+        const color = INDEX_COLORS[idx % INDEX_COLORS.length];
+        return {
+          label: indexData.index,
+          data: data.years.map(year => indexData.values[year.toString()] || 0),
+          backgroundColor: color,
+          borderColor: color,
+          borderWidth: 1,
+          borderRadius: 0,
+          borderSkipped: false,
+        };
+      })
+    };
+  }, [data]);
 
   // Кастомный плагин для отображения значений на сегментах
   const dataLabelsPlugin = {
@@ -223,7 +219,7 @@ const FederalSharesChart: React.FC<FederalSharesChartProps> = ({ data, className
       },
       title: {
         display: true,
-        text: chartData.title,
+        text: data.title,
         font: {
           size: 18,
           weight: 'bold' as const,
@@ -249,8 +245,8 @@ const FederalSharesChart: React.FC<FederalSharesChartProps> = ({ data, className
       {/* Дополнительная информация */}
       <div className="mb-4">
         <div className="flex items-center justify-between text-sm text-gray-600">
-          <span>Показатели d1-d10</span>
-          <span>Годы: {chartData.years.join(', ')}</span>
+          <span>Показатели {data.indexes.map(i => i.index).join(', ')}</span>
+          <span>Годы: {data.years.join(', ')}</span>
         </div>
       </div>
 
@@ -261,7 +257,7 @@ const FederalSharesChart: React.FC<FederalSharesChartProps> = ({ data, className
 
       {/* Информация о данных */}
       <div className="mt-4 text-center text-xs text-gray-500">
-        Федеральные доли по {chartData.dimensions.length} показателям за {chartData.years.length} года
+        Федеральные доли по {data.indexes.length} показателям за {data.years.length} {data.years.length === 1 ? 'год' : data.years.length < 5 ? 'года' : 'лет'}
       </div>
     </div>
   );

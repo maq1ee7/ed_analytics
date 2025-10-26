@@ -1,18 +1,41 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { RegionCode, RUSSIA_REGIONS, generateStableTemperatureData, regionCoordinates, REGION_CODES, getRegionTitle } from '../../constants/regions';
+import { RegionCode, RUSSIA_REGIONS, regionCoordinates, REGION_CODES, getRegionTitle } from '../../constants/regions';
+import { RussiaMapChartData } from '../../types/charts';
 
-const RussiaInteractiveMap: React.FC = () => {
+interface RussiaInteractiveMapProps {
+  data?: RussiaMapChartData;
+  className?: string;
+}
+
+const RussiaInteractiveMap: React.FC<RussiaInteractiveMapProps> = ({ data, className = '' }) => {
   const [hoveredRegion, setHoveredRegion] = useState<RegionCode | null>(null);
   const [currentYearIndex, setCurrentYearIndex] = useState(0);
 
+  if (!data || !data.years || data.years.length === 0) {
+    return (
+      <div className={`flex items-center justify-center h-96 ${className}`}>
+        <div className="text-gray-500">Нет данных для отображения</div>
+      </div>
+    );
+  }
+
   // Массив доступных годов
-  const years = useMemo(() => [2020, 2021, 2022, 2023, 2024], []);
+  const years = useMemo(() => data.years.map(y => y.year), [data]);
   const currentYear = years[currentYearIndex];
 
-  // Генерируем стабильные данные с учетом текущего года
-  const regionTemperatureData = useMemo(() => {
-    return generateStableTemperatureData(12345, currentYear);
-  }, [currentYear]); // Регенерируем данные при изменении года
+  // Получаем данные для текущего года
+  const currentYearData = useMemo(() => {
+    return data.years[currentYearIndex];
+  }, [data, currentYearIndex]);
+
+  // Создаём карту значений для быстрого доступа
+  const regionValueMap = useMemo(() => {
+    const map: { [key: string]: number } = {};
+    currentYearData.regions.forEach(region => {
+      map[region.regionCode] = region.value;
+    });
+    return map;
+  }, [currentYearData]);
 
   const handleRegionMouseEnter = useCallback((regionCode: RegionCode) => {
     setHoveredRegion(regionCode);
@@ -37,48 +60,48 @@ const RussiaInteractiveMap: React.FC = () => {
   const getRegionData = useCallback((regionCode: RegionCode) => {
     const regionInfo = RUSSIA_REGIONS[regionCode];
     if (!regionInfo) {
-      return { title: 'Неизвестный регион', temperature: 0 };
+      return { title: 'Неизвестный регион', value: 0 };
     }
 
-    // Используем предгенерированную температуру
-    const temperature = regionTemperatureData[regionCode] || 0;
+    // Получаем значение из данных
+    const value = regionValueMap[regionCode] || 0;
 
     return {
       title: regionInfo.title,
-      temperature,
+      value,
       type: regionInfo.type,
       federalDistrict: regionInfo.federalDistrict
     };
-  }, [regionTemperatureData]);
+  }, [regionValueMap]);
 
-  const getTemperatureColor = (temperature: number) => {
-    // Цветовая схема на основе температуры
-    if (temperature <= -10) return '#1e40af'; // Очень холодно - темно-синий
-    if (temperature <= 0) return '#3b82f6';   // Холодно - синий
-    if (temperature <= 10) return '#06b6d4';  // Прохладно - голубой
-    if (temperature <= 20) return '#10b981';  // Умеренно - зеленый
-    if (temperature <= 30) return '#f59e0b';  // Тепло - оранжевый
-    return '#ef4444';                         // Жарко - красный
+  const getValueColor = (value: number) => {
+    // Цветовая схема на основе значения
+    if (value <= -20) return '#1e40af'; // Очень низкое - темно-синий
+    if (value <= -10) return '#3b82f6'; // Низкое - синий
+    if (value <= 0) return '#06b6d4';   // Ниже среднего - голубой
+    if (value <= 10) return '#10b981';  // Среднее - зеленый
+    if (value <= 20) return '#f59e0b';  // Выше среднего - оранжевый
+    return '#ef4444';                   // Высокое - красный
   };
 
-  const getTemperatureHoverColor = (temperature: number) => {
+  const getValueHoverColor = (value: number) => {
     // Более яркие цвета при наведении
-    if (temperature <= -10) return '#1d4ed8'; // Очень холодно - ярче темно-синий
-    if (temperature <= 0) return '#2563eb';   // Холодно - ярче синий
-    if (temperature <= 10) return '#0891b2';  // Прохладно - ярче голубой
-    if (temperature <= 20) return '#059669';  // Умеренно - ярче зеленый
-    if (temperature <= 30) return '#d97706';  // Тепло - ярче оранжевый
-    return '#dc2626';                         // Жарко - ярче красный
+    if (value <= -20) return '#1d4ed8'; // Очень низкое - ярче темно-синий
+    if (value <= -10) return '#2563eb'; // Низкое - ярче синий
+    if (value <= 0) return '#0891b2';   // Ниже среднего - ярче голубой
+    if (value <= 10) return '#059669';  // Среднее - ярче зеленый
+    if (value <= 20) return '#d97706';  // Выше среднего - ярче оранжевый
+    return '#dc2626';                   // Высокое - ярче красный
   };
 
   const getRegionFill = useCallback((regionCode: RegionCode) => {
     const regionData = getRegionData(regionCode);
-    return getTemperatureColor(regionData.temperature);
+    return getValueColor(regionData.value);
   }, [getRegionData]);
 
   const getRegionHoverFill = useCallback((regionCode: RegionCode) => {
     const regionData = getRegionData(regionCode);
-    return getTemperatureHoverColor(regionData.temperature);
+    return getValueHoverColor(regionData.value);
   }, [getRegionData]);
 
   return (
@@ -163,12 +186,12 @@ const RussiaInteractiveMap: React.FC = () => {
                 <span className="font-medium">Год:</span> {currentYear}
               </div>
               <div>
-                <span className="font-medium">Температура:</span>
-                <span className={`ml-1 font-semibold ${getRegionData(hoveredRegion).temperature > 20 ? 'text-red-600' :
-                    getRegionData(hoveredRegion).temperature > 0 ? 'text-green-600' :
+                <span className="font-medium">Значение:</span>
+                <span className={`ml-1 font-semibold ${getRegionData(hoveredRegion).value > 10 ? 'text-red-600' :
+                    getRegionData(hoveredRegion).value > 0 ? 'text-green-600' :
                       'text-blue-600'
                   }`}>
-                  {getRegionData(hoveredRegion).temperature > 0 ? '+' : ''}{getRegionData(hoveredRegion).temperature}°C
+                  {getRegionData(hoveredRegion).value > 0 ? '+' : ''}{getRegionData(hoveredRegion).value.toFixed(1)}
                 </span>
               </div>
             </div>
@@ -205,7 +228,7 @@ const RussiaInteractiveMap: React.FC = () => {
 
       {/* Информация о текущем годе */}
       <div className="mt-4 text-center text-sm text-gray-600">
-        Показаны температурные данные за {currentYear} год
+        Показаны данные по {currentYearData.regions.length} регионам за {currentYear} год
       </div>
     </div>
   );

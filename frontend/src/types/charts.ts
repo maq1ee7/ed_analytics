@@ -62,3 +62,75 @@ export interface FederalSharesData {
   dimensions: FederalSharesDataPoint[]; // Данные по каждому измерению d1-d10
   maxPercentage: number; // Максимальное значение для масштабирования (обычно 100)
 }
+
+// Типы для данных из dashboardExample.json
+
+export interface ExponentialChartPoint {
+  x: number;
+  y: number;
+}
+
+export interface ExponentialChartYear {
+  year: number;
+  points: ExponentialChartPoint[];
+}
+
+export interface ExponentialChartData {
+  years: ExponentialChartYear[];
+}
+
+export interface FederalSharesIndexData {
+  index: string;
+  values: { [year: string]: number };
+}
+
+export interface FederalSharesChartData {
+  title: string;
+  years: number[];
+  maxPercentage: number;
+  indexes: FederalSharesIndexData[];
+}
+
+export interface RadarChartRegionData {
+  regionCode: string;
+  values: number[];
+}
+
+export interface RadarChartYearData {
+  year: number;
+  axes: string[];
+  maxValue: number;
+  regions: RadarChartRegionData[];
+}
+
+export interface RadarChartDataFromJSON {
+  years: RadarChartYearData[];
+}
+
+export interface RussiaMapRegionData {
+  regionCode: string;
+  value: number;
+}
+
+export interface RussiaMapYearData {
+  year: number;
+  regions: RussiaMapRegionData[];
+}
+
+export interface RussiaMapChartData {
+  years: RussiaMapYearData[];
+}
+
+export interface ChartItem {
+  type: 'exponential' | 'federal_shares' | 'radar' | 'russia_map';
+  title: string;
+  data: ExponentialChartData | FederalSharesChartData | RadarChartDataFromJSON | RussiaMapChartData;
+}
+
+export interface DashboardData {
+  dashboard: {
+    title: string;
+    description: string;
+    charts: ChartItem[];
+  };
+}
