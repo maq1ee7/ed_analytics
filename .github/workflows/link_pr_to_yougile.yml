@@ -1,0 +1,62 @@
+name: Link PR to YouGile Task
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  update-yougile-task:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract PR info
+        id: extract-pr
+        run: |
+          echo "PR_NUMBER=${{ github.event.number }}" >> $GITHUB_ENV
+          echo "PR_TITLE=${{ github.event.pull_request.title }}" >> $GITHUB_ENV
+          echo "PR_URL=${{ github.event.pull_request.html_url }}" >> $GITHUB_ENV
+          echo "PR_BODY=${{ github.event.pull_request.body }}" >> $GITHUB_ENV
+
+      - name: Find YouGile Task ID
+        id: find-task
+        run: |
+          TICKET_ID=$(echo "$PR_TITLE $PR_BODY" | grep -oE "IT-[0-9]+" | head -n 1 | tr '[:lower:]' '[:upper:]')
+          if [ -z "$TICKET_ID" ]; then
+            echo "No YouGile task ID found in PR."
+            exit 0
+          else
+            echo "Found YouGile Task ID: $TICKET_ID"
+            echo "TICKET_ID=$TICKET_ID" >> $GITHUB_ENV
+          fi
+
+      - name: Get current task description from YouGile
+        if: env.TICKET_ID != ''
+        id: get-description
+        run: |
+          RESPONSE=$(curl -s -X GET \
+            "https://ru.yougile.com/api-v2/tasks/${{ env.TICKET_ID }}" \
+            -H "Authorization: Bearer ${{ secrets.YOUGILE_API_KEY }}" \
+            -H "Content-Type: application/json")
+
+          # Обрабатываем случай, когда описание null или пустое
+          CURRENT_DESCRIPTION=$(echo "$RESPONSE" | jq -r '.description')
+          if [ "$CURRENT_DESCRIPTION" = "null" ] || [ -z "$CURRENT_DESCRIPTION" ]; then
+            CURRENT_DESCRIPTION=""  # Заменяем null на пустую строку
+          else
+            # Экранируем кавычки, если описание не пустое
+            CURRENT_DESCRIPTION=$(echo "$CURRENT_DESCRIPTION" | sed 's/"/\\"/g')
+          fi
+          echo "CURRENT_DESCRIPTION=$CURRENT_DESCRIPTION" >> $GITHUB_ENV
+
+      - name: Update YouGile Task
+        if: env.TICKET_ID != ''
+        run: |
+          # Формируем новое описание (без "null" в начале)
+          UPDATED_DESCRIPTION="$CURRENT_DESCRIPTION\n\n🔗 GitHub PR: #${{ env.PR_NUMBER }} (${{ env.PR_URL }})"
+
+          # Отправляем обновление в YouGile
+          curl -X PUT \
+            "https://ru.yougile.com/api-v2/tasks/${{ env.TICKET_ID }}" \
+            -H "Authorization: Bearer ${{ secrets.YOUGILE_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "description": "'"$UPDATED_DESCRIPTION"'"
+            }'
