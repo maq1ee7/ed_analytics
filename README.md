@@ -81,7 +81,8 @@ ed_analytics/
 │   │   ├── components/
 │   │   │   ├── charts/              # Компоненты графиков
 │   │   │   │   ├── ExponentialChart.tsx      # Экспоненциальный график
-│   │   │   │   ├── HistogramChart.tsx        # Гистограмма
+│   │   │   │   ├── FederalSharesChart.tsx    # График долей по округам
+│   │   │   │   ├── RadarChart.tsx            # Радарная диаграмма
 │   │   │   │   └── RussiaInteractiveMap.tsx  # Интерактивная карта России
 │   │   │   ├── Dashboard/
 │   │   │   │   └── ChartsGrid.tsx            # Сетка графиков
