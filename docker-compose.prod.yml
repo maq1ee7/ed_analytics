@@ -10,7 +10,7 @@ services:
       - POSTGRES_PASSWORD=ed_prod_password_change_me_in_production
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
-      - ./backend/migrations:/docker-entrypoint-initdb.d
+      # Миграции применяются через backend код, а не через initdb
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ed_user_prod -d ed_analytics_prod"]

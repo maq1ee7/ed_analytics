@@ -29,13 +29,16 @@ const getAppliedMigrations = async (): Promise<string[]> => {
 
 // Читаем файлы миграций из папки
 const readMigrationFiles = (): Migration[] => {
-  // В Docker контейнере: /app/migrations, в разработке: ../../migrations
-  const migrationsDir = process.env.NODE_ENV === 'production' 
-    ? path.join(__dirname, '../../migrations')
-    : path.join(__dirname, '../../migrations');
+  // После компиляции: dist/utils/migrations.js -> ../../migrations = /app/migrations
+  const migrationsDir = path.join(__dirname, '../../migrations');
+  
+  console.log(`🔍 Looking for migrations in: ${migrationsDir}`);
+  console.log(`🔍 __dirname is: ${__dirname}`);
+  console.log(`🔍 NODE_ENV: ${process.env.NODE_ENV}`);
   
   if (!fs.existsSync(migrationsDir)) {
-    console.log('📁 Migrations directory not found, creating...');
+    console.error(`❌ Migrations directory not found: ${migrationsDir}`);
+    console.log('📁 Creating migrations directory...');
     fs.mkdirSync(migrationsDir, { recursive: true });
     return [];
   }
@@ -43,6 +46,8 @@ const readMigrationFiles = (): Migration[] => {
   const files = fs.readdirSync(migrationsDir)
     .filter(file => file.endsWith('.sql'))
     .sort(); // Сортируем по имени файла
+
+  console.log(`📂 Found ${files.length} migration file(s): ${files.join(', ')}`);
 
   const migrations: Migration[] = [];
 
