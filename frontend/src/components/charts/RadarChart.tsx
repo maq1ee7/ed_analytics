@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Chart as ChartJS,
   RadialLinearScale,
@@ -9,8 +9,8 @@ import {
   Legend,
 } from 'chart.js';
 import { Radar } from 'react-chartjs-2';
-import { RadarChartDataset } from '../../types/charts';
-import { generateRadarChartData, loadRadarChartMockData } from '../../utils/mockDataGenerators';
+import { RadarChartDataFromJSON } from '../../types/charts';
+import { RUSSIA_REGIONS, RegionCode } from '../../constants/regions';
 
 // Регистрируем компоненты Chart.js
 ChartJS.register(
@@ -23,62 +23,64 @@ ChartJS.register(
 );
 
 interface RadarChartProps {
-  data?: RadarChartDataset;
+  data?: RadarChartDataFromJSON;
   className?: string;
 }
 
+// Цвета для регионов
+const REGION_COLORS = [
+  '#3b82f6', // Синий
+  '#10b981', // Зелёный
+  '#ef4444', // Красный
+  '#f59e0b', // Оранжевый
+  '#8b5cf6', // Фиолетовый
+  '#ec4899', // Розовый
+  '#06b6d4', // Голубой
+  '#f97316', // Тёмно-оранжевый
+];
+
 const RadarChart: React.FC<RadarChartProps> = ({ data, className = '' }) => {
   const [currentYearIndex, setCurrentYearIndex] = useState(0);
-  const [chartData, setChartData] = useState<RadarChartDataset | null>(null);
 
-  // Загружаем данные при монтировании компонента
-  useEffect(() => {
-    const loadData = async () => {
-      if (data) {
-        setChartData(data);
-      } else {
-        try {
-          const mockData = await loadRadarChartMockData();
-          setChartData(mockData);
-        } catch (error) {
-          console.error('Ошибка загрузки данных:', error);
-          // Fallback на сгенерированные данные
-          setChartData(generateRadarChartData());
-        }
-      }
-    };
-
-    loadData();
-  }, [data]);
-
-  if (!chartData || !chartData.years.length) {
+  if (!data || !data.years || data.years.length === 0) {
     return (
       <div className={`flex items-center justify-center h-96 ${className}`}>
-        <div className="text-gray-500">Загрузка данных...</div>
+        <div className="text-gray-500">Нет данных для отображения</div>
       </div>
     );
   }
 
-  const currentYearData = chartData.years[currentYearIndex];
-  const years = chartData.years.map(y => y.year);
+  const currentYearData = data.years[currentYearIndex];
+  const years = data.years.map(y => y.year);
+
+  // Получаем название региона по коду
+  const getRegionName = (regionCode: string): string => {
+    const region = RUSSIA_REGIONS[regionCode as RegionCode];
+    return region ? region.title : regionCode;
+  };
 
   // Подготавливаем данные для Chart.js
-  const chartJsData = {
-    labels: currentYearData.axes,
-    datasets: currentYearData.regions.map(region => ({
-      label: region.regionName,
-      data: region.values,
-      backgroundColor: region.color + '20', // Добавляем прозрачность
-      borderColor: region.color,
-      borderWidth: 2,
-      pointBackgroundColor: region.color,
-      pointBorderColor: '#fff',
-      pointHoverBackgroundColor: '#fff',
-      pointHoverBorderColor: region.color,
-      pointRadius: 4,
-      pointHoverRadius: 6,
-    }))
-  };
+  const chartJsData = useMemo(() => {
+    return {
+      labels: currentYearData.axes,
+      datasets: currentYearData.regions.map((region, index) => {
+        const color = REGION_COLORS[index % REGION_COLORS.length];
+        return {
+          label: getRegionName(region.regionCode),
+          data: region.values,
+          backgroundColor: color + '20', // Добавляем прозрачность
+          borderColor: color,
+          borderWidth: 2,
+          pointBackgroundColor: color,
+          pointBorderColor: '#fff',
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: color,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+        };
+      })
+    };
+  }, [currentYearData]);
 
   const options = {
     responsive: true,
@@ -143,13 +145,13 @@ const RadarChart: React.FC<RadarChartProps> = ({ data, className = '' }) => {
 
   const handlePrevYear = () => {
     setCurrentYearIndex(prev => 
-      prev === 0 ? chartData.years.length - 1 : prev - 1
+      prev === 0 ? data.years.length - 1 : prev - 1
     );
   };
 
   const handleNextYear = () => {
     setCurrentYearIndex(prev => 
-      prev === chartData.years.length - 1 ? 0 : prev + 1
+      prev === data.years.length - 1 ? 0 : prev + 1
     );
   };
 
