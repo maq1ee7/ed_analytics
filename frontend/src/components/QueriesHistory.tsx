@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getUserQueries, handleApiError, QueryResponse } from '../utils/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const QueriesHistory: React.FC = () => {
   const [queries, setQueries] = useState<QueryResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
+    // Загружаем запросы только для авторизованных пользователей
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      return;
+    }
+
     const fetchQueries = async (): Promise<void> => {
       try {
         setIsLoading(true);
@@ -24,7 +32,7 @@ const QueriesHistory: React.FC = () => {
     };
 
     fetchQueries();
-  }, []);
+  }, [isAuthenticated]);
 
   const handleNewQuery = (): void => {
     navigate('/query');
@@ -33,6 +41,16 @@ const QueriesHistory: React.FC = () => {
   const handleNewQueryKeyDown = (e: React.KeyboardEvent): void => {
     if (e.key === 'Enter' || e.key === ' ') {
       handleNewQuery();
+    }
+  };
+
+  const handleQueryClick = (uid: string): void => {
+    navigate(`/dashboard/${uid}`);
+  };
+
+  const handleQueryKeyDown = (e: React.KeyboardEvent, uid: string): void => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      handleQueryClick(uid);
     }
   };
 
@@ -103,7 +121,12 @@ const QueriesHistory: React.FC = () => {
             {queries.map((query) => (
               <div
                 key={query.id}
-                className="p-4 hover:bg-gray-50 transition duration-150 ease-in-out"
+                onClick={() => handleQueryClick(query.uid)}
+                onKeyDown={(e) => handleQueryKeyDown(e, query.uid)}
+                className="p-4 hover:bg-gray-50 transition duration-150 ease-in-out cursor-pointer"
+                role="button"
+                tabIndex={0}
+                aria-label={`Открыть дашборд: ${query.question}`}
               >
                 <div className="space-y-2">
                   <div className="text-sm font-medium text-gray-900">

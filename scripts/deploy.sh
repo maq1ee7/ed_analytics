@@ -46,7 +46,7 @@ ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
     fi
     
     # Создаем чистую структуру папок
-    mkdir -p $PROJECT_DIR/{backend/src,backend/migrations,frontend/src,scripts}
+    mkdir -p $PROJECT_DIR/{backend/src,backend/migrations,backend/data,frontend/src,scripts}
     echo '✅ Чистая структура папок создана'
 "
 
@@ -62,9 +62,10 @@ scp -i "$SSH_KEY" \
 scp -i "$SSH_KEY" -r \
     "$LOCAL_DIR/backend/src/" \
     "$LOCAL_DIR/backend/migrations/" \
+    "$LOCAL_DIR/backend/data/" \
     "$SERVER_USER@$SERVER_IP:~/$PROJECT_DIR/backend/"
 
-echo "✅ Backend файлы и миграции скопированы"
+echo "✅ Backend файлы, миграции и данные скопированы"
 
 echo ""
 echo "3️⃣ Копируем frontend файлы..."

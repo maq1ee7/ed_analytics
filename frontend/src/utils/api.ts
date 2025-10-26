@@ -165,8 +165,10 @@ export interface QueryRequest {
 
 export interface QueryResponse {
   id: number;
+  uid: string;
   question: string;
-  answer: string;
+  answer: any; // DashboardData object (JSONB from PostgreSQL)
+  dashboard_title: string;
   created_at: string;
 }
 
@@ -183,6 +185,30 @@ export const submitQuery = async (question: string): Promise<QueryResponse> => {
 export const getUserQueries = async (): Promise<QueryResponse[]> => {
   const response = await api.get<UserQueriesResponse>('/queries');
   return response.data.queries;
+};
+
+// Получение дашборда по UID (публичный метод, не требует авторизации)
+export const getDashboardByUid = async (uid: string): Promise<QueryResponse> => {
+  const response = await api.get<QueryResponse>(`/queries/${uid}`);
+  return response.data;
+};
+
+// Получение UID последнего дашборда пользователя
+export const getLatestDashboardUid = async (): Promise<string | null> => {
+  try {
+    const queries = await getUserQueries();
+    console.log('User queries received:', queries.length);
+    if (queries.length === 0) {
+      console.log('No queries found for user');
+      return null;
+    }
+    // Запросы уже отсортированы по created_at DESC на backend
+    console.log('Latest query UID:', queries[0].uid);
+    return queries[0].uid;
+  } catch (error) {
+    console.error('Error getting latest dashboard UID:', error);
+    return null;
+  }
 };
 
 export default api;

@@ -21,10 +21,10 @@ export class DashboardGenerator {
         return this.cachedDashboard;
       }
 
-      // Путь к файлу dashboardExample.json
+      // Путь к файлу dashboardExample.json в backend/data
       const dashboardPath = path.join(
         __dirname, 
-        '../../../frontend/public/data/dashboardExample.json'
+        '../../data/dashboardExample.json'
       );
 
       // Проверяем существование файла
