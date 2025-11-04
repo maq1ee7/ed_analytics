@@ -82,6 +82,9 @@ services:
       - JWT_REFRESH_SECRET=your-super-secret-refresh-key-change-in-production
       - BACKEND_CORE_URL=http://brama:5001
       - BACKEND_CORE_API_KEY=dev-api-key-b8c7d3e9-4f1a-4b2c-9d8e-5a6b7c8d9e0f
+      - TELEGRAM_BOT_API_KEY=dev-telegram-bot-api-key-temp
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     volumes:
       - ./backend/src:/app/src:ro
     depends_on:
@@ -116,6 +119,28 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  telegram-bot:
+    build:
+      context: ./telegram-bot
+      dockerfile: Dockerfile
+    container_name: ed_analytics_telegram_bot_dev
+    environment:
+      - NODE_ENV=development
+      - TELEGRAM_BOT_TOKEN=8576902445:AAFs5BEGoC44Lexn7VuLRAO6qFtFG4hp1Fs
+      - TELEGRAM_BOT_API_KEY=dev-telegram-bot-api-key-temp
+      - BACKEND_URL=http://backend:5000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DASHBOARD_BASE_URL=http://130.193.46.4
+    volumes:
+      - ./telegram-bot/src:/app/src:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:

@@ -20,6 +20,7 @@ export interface Query {
   dashboard_title?: string; // Название дашборда (опционально)
   status: QueryStatus; // Статус обработки
   error_message?: string; // Сообщение об ошибке (если failed)
+  telegram_chat_id?: number; // ID чата Telegram для уведомлений (null для web)
   processing_started_at?: Date; // Время начала обработки
   processing_completed_at?: Date; // Время завершения
   created_at: Date;
@@ -29,20 +30,22 @@ export interface CreateQueryData {
   user_id: number;
   question: string;
   status?: QueryStatus; // По умолчанию pending
+  telegram_chat_id?: number; // Опционально для Telegram bot запросов
 }
 
 export class QueryModel {
   // Создание нового запроса (async, без дашборда)
   static async create(data: CreateQueryData): Promise<Query> {
     const result = await query(
-      `INSERT INTO queries (user_id, question, status) 
-       VALUES ($1, $2, $3) 
+      `INSERT INTO queries (user_id, question, status, telegram_chat_id) 
+       VALUES ($1, $2, $3, $4) 
        RETURNING id, user_id, uid, question, answer, dashboard_title, status, 
-                 error_message, processing_started_at, processing_completed_at, created_at`,
+                 error_message, telegram_chat_id, processing_started_at, processing_completed_at, created_at`,
       [
         data.user_id, 
         data.question,
-        data.status || 'pending'
+        data.status || 'pending',
+        data.telegram_chat_id || null
       ]
     );
 
@@ -53,7 +56,7 @@ export class QueryModel {
   static async findByUserId(userId: number): Promise<Query[]> {
     const result = await query(
       `SELECT id, user_id, uid, question, answer, dashboard_title, status, 
-              error_message, processing_started_at, processing_completed_at, created_at 
+              error_message, telegram_chat_id, processing_started_at, processing_completed_at, created_at 
        FROM queries 
        WHERE user_id = $1 
        ORDER BY created_at DESC`,
@@ -67,7 +70,7 @@ export class QueryModel {
   static async findById(id: number): Promise<Query | null> {
     const result = await query(
       `SELECT id, user_id, uid, question, answer, dashboard_title, status, 
-              error_message, processing_started_at, processing_completed_at, created_at 
+              error_message, telegram_chat_id, processing_started_at, processing_completed_at, created_at 
        FROM queries 
        WHERE id = $1`,
       [id]
@@ -80,7 +83,7 @@ export class QueryModel {
   static async findByUid(uid: string): Promise<Query | null> {
     const result = await query(
       `SELECT id, user_id, uid, question, answer, dashboard_title, status, 
-              error_message, processing_started_at, processing_completed_at, created_at 
+              error_message, telegram_chat_id, processing_started_at, processing_completed_at, created_at 
        FROM queries 
        WHERE uid = $1`,
       [uid]
@@ -96,7 +99,7 @@ export class QueryModel {
        SET status = 'processing', processing_started_at = CURRENT_TIMESTAMP 
        WHERE uid = $1 
        RETURNING id, user_id, uid, question, answer, dashboard_title, status, 
-                 error_message, processing_started_at, processing_completed_at, created_at`,
+                 error_message, telegram_chat_id, processing_started_at, processing_completed_at, created_at`,
       [uid]
     );
 
@@ -116,7 +119,7 @@ export class QueryModel {
            processing_completed_at = CURRENT_TIMESTAMP 
        WHERE uid = $3 
        RETURNING id, user_id, uid, question, answer, dashboard_title, status, 
-                 error_message, processing_started_at, processing_completed_at, created_at`,
+                 error_message, telegram_chat_id, processing_started_at, processing_completed_at, created_at`,
       [
         JSON.stringify(answer),
         answer.dashboard.title,
@@ -139,7 +142,7 @@ export class QueryModel {
            processing_completed_at = CURRENT_TIMESTAMP 
        WHERE uid = $2 
        RETURNING id, user_id, uid, question, answer, dashboard_title, status, 
-                 error_message, processing_started_at, processing_completed_at, created_at`,
+                 error_message, telegram_chat_id, processing_started_at, processing_completed_at, created_at`,
       [errorMessage, uid]
     );
 
