@@ -20,6 +20,49 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: ed_analytics_redis_dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  brama:
+    build:
+      context: ./brama
+      dockerfile: Dockerfile
+    container_name: ed_analytics_brama_dev
+    ports:
+      - "5001:5001"
+    environment:
+      - NODE_ENV=development
+      - PORT=5001
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ALLOWED_API_KEY=dev-api-key-b8c7d3e9-4f1a-4b2c-9d8e-5a6b7c8d9e0f
+      - BACKEND_URL=http://backend:5000
+      - MOCK_PROCESSING_TIME=15000
+      - WORKER_CONCURRENCY=2
+    volumes:
+      - ./brama/src:/app/src:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const options = { hostname: 'localhost', port: 5001, path: '/health', timeout: 2000 }; const req = http.request(options, (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }); req.on('error', () => process.exit(1)); req.end();"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   backend:
     build:
       context: ./backend
@@ -37,10 +80,14 @@ services:
       - DB_PASSWORD=ed_password
       - JWT_SECRET=your-super-secret-jwt-key-change-in-production
       - JWT_REFRESH_SECRET=your-super-secret-refresh-key-change-in-production
+      - BACKEND_CORE_URL=http://brama:5001
+      - BACKEND_CORE_API_KEY=dev-api-key-b8c7d3e9-4f1a-4b2c-9d8e-5a6b7c8d9e0f
     volumes:
       - ./backend/src:/app/src:ro
     depends_on:
       postgres:
+        condition: service_healthy
+      brama:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -72,6 +119,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   default:

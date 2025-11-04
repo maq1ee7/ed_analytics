@@ -1,12 +1,12 @@
 import fs from 'fs';
 import path from 'path';
-import { DashboardData } from '../models/Query';
+import { DashboardData } from '../types';
 
 /**
- * Временная утилита для генерации ответа в виде дашборда
+ * Mock генератор дашбордов
  * Загружает dashboardExample.json в качестве заглушки
  * 
- * TODO: Заменить на реальный генератор дашбордов на основе AI/аналитики
+ * TODO: Заменить на реальную интеграцию с LLM
  */
 export class DashboardGenerator {
   private static cachedDashboard: DashboardData | null = null;
@@ -21,7 +21,7 @@ export class DashboardGenerator {
         return this.cachedDashboard;
       }
 
-      // Путь к файлу dashboardExample.json в backend/data
+      // Путь к файлу dashboardExample.json в brama/data
       const dashboardPath = path.join(
         __dirname, 
         '../../data/dashboardExample.json'
@@ -51,7 +51,7 @@ export class DashboardGenerator {
 
   /**
    * Генерирует ответ на вопрос пользователя
-   * Временная реализация - возвращает dashboardExample.json
+   * Mock реализация - возвращает dashboardExample.json
    * 
    * @param question - вопрос пользователя
    * @returns DashboardData
@@ -59,10 +59,10 @@ export class DashboardGenerator {
   static async generateDashboard(question: string): Promise<DashboardData> {
     console.log('Generating dashboard for question:', question);
     
-    // TODO: Здесь будет логика генерации дашборда на основе:
-    // - AI модели для анализа вопроса
-    // - Запросов к базе данных аналитики
-    // - Формирования графиков на основе данных
+    // TODO: Здесь будет интеграция с LLM:
+    // - Отправка запроса в OpenAI/Claude/другой LLM
+    // - Парсинг ответа
+    // - Формирование структуры дашборда
     
     // Пока просто возвращаем пример
     return this.loadDashboardExample();
@@ -75,4 +75,5 @@ export class DashboardGenerator {
     this.cachedDashboard = null;
   }
 }
+
 

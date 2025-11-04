@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { submitQuery, handleApiError } from '../utils/api';
+import { submitQuery, pollQueryStatus, handleApiError, QueryStatus } from '../utils/api';
 
 const QueryPage: React.FC = () => {
   const [question, setQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState<QueryStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -18,18 +19,41 @@ const QueryPage: React.FC = () => {
 
     setIsLoading(true);
     setError(null);
+    setProcessingStatus(null);
 
     try {
-      // Отправляем запрос (с 3-секундной задержкой на бэкенде)
-      await submitQuery(question.trim());
+      // Отправляем запрос в очередь обработки
+      const submitResponse = await submitQuery(question.trim());
+      console.log('Query submitted:', submitResponse.uid);
       
-      // После получения ответа редиректим на дашборд
-      navigate('/dashboard');
+      setProcessingStatus(submitResponse.status);
+
+      // Начинаем polling статуса
+      const result = await pollQueryStatus(
+        submitResponse.uid,
+        (status) => {
+          console.log('Polling status:', status);
+          setProcessingStatus(status);
+        },
+        2000, // Проверяем каждые 2 секунды
+        150   // Максимум 5 минут
+      );
+
+      console.log('Query completed:', result);
+
+      // Если завершено успешно - редирект на дашборд
+      if (result.status === 'completed') {
+        navigate('/dashboard');
+      } else if (result.status === 'failed') {
+        setError(result.error_message || 'Произошла ошибка при обработке запроса');
+      }
+
     } catch (err) {
       const apiError = handleApiError(err);
       setError(apiError.message || 'Произошла ошибка при обработке запроса');
     } finally {
       setIsLoading(false);
+      setProcessingStatus(null);
     }
   };
 
@@ -77,6 +101,21 @@ const QueryPage: React.FC = () => {
               </div>
             )}
 
+            {processingStatus && (
+              <div className="rounded-md bg-blue-50 p-4">
+                <div className="flex items-center">
+                  <svg className="animate-spin h-5 w-5 text-blue-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <div className="text-sm text-blue-700">
+                    {processingStatus === 'pending' && 'Запрос в очереди...'}
+                    {processingStatus === 'processing' && 'Обрабатывается с помощью LLM...'}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex space-x-4">
               <button
                 type="submit"
@@ -89,7 +128,9 @@ const QueryPage: React.FC = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Обрабатывается...
+                    {processingStatus === 'pending' && 'В очереди...'}
+                    {processingStatus === 'processing' && 'Обрабатывается...'}
+                    {!processingStatus && 'Отправка...'}
                   </div>
                 ) : (
                   'Отправить запрос'

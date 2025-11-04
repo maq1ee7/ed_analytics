@@ -163,13 +163,20 @@ export interface QueryRequest {
   question: string;
 }
 
+export type QueryStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
 export interface QueryResponse {
-  id: number;
+  id?: number;
   uid: string;
   question: string;
-  answer: any; // DashboardData object (JSONB from PostgreSQL)
-  dashboard_title: string;
+  answer: any | null; // DashboardData object (JSONB from PostgreSQL), null если еще не обработан
+  dashboard_title?: string;
+  status: QueryStatus;
+  error_message?: string;
   created_at: string;
+  processing_started_at?: string;
+  processing_completed_at?: string;
+  message?: string; // Сообщение от сервера (для async запросов)
 }
 
 export interface UserQueriesResponse {
@@ -177,9 +184,57 @@ export interface UserQueriesResponse {
 }
 
 // API методы для работы с запросами
+
+// Отправка нового запроса (асинхронный)
 export const submitQuery = async (question: string): Promise<QueryResponse> => {
-  const response = await api.post<QueryResponse>('/queries', { question });
+  const response = await api.post<QueryResponse>('/queries', { question }, {
+    timeout: 10000 // 10 секунд таймаут для отправки в очередь
+  });
   return response.data;
+};
+
+// Получение статуса запроса по UID (для polling)
+export const getQueryStatus = async (uid: string): Promise<QueryResponse> => {
+  const response = await api.get<QueryResponse>(`/queries/status/${uid}`, {
+    timeout: 5000 // 5 секунд таймаут
+  });
+  return response.data;
+};
+
+// Polling функция - проверяет статус пока не получит completed/failed
+export const pollQueryStatus = async (
+  uid: string,
+  onProgress?: (status: QueryStatus) => void,
+  pollingInterval: number = 2000, // 2 секунды
+  maxAttempts: number = 150 // 5 минут максимум (150 * 2s = 300s)
+): Promise<QueryResponse> => {
+  let attempts = 0;
+
+  const poll = async (): Promise<QueryResponse> => {
+    attempts++;
+
+    if (attempts > maxAttempts) {
+      throw new Error('Polling timeout: query processing took too long');
+    }
+
+    const response = await getQueryStatus(uid);
+    
+    // Вызываем callback если передан
+    if (onProgress) {
+      onProgress(response.status);
+    }
+
+    // Если завершено или ошибка - возвращаем результат
+    if (response.status === 'completed' || response.status === 'failed') {
+      return response;
+    }
+
+    // Иначе ждем и повторяем
+    await new Promise(resolve => setTimeout(resolve, pollingInterval));
+    return poll();
+  };
+
+  return poll();
 };
 
 export const getUserQueries = async (): Promise<QueryResponse[]> => {
