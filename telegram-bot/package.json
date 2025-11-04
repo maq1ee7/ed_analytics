@@ -1,0 +1,28 @@
+{
+  "name": "ed_analytics_telegram_bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for ED Analytics - sends dashboard links to users",
+  "main": "dist/bot.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/bot.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/bot.ts",
+    "clean": "rm -rf dist"
+  },
+  "keywords": ["telegram", "bot", "telegraf", "bull", "redis"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "telegraf": "^4.15.0",
+    "bull": "^4.12.0",
+    "axios": "^1.6.2",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@types/bull": "^4.10.0",
+    "typescript": "^5.3.3",
+    "ts-node-dev": "^2.0.0"
+  }
+}
+

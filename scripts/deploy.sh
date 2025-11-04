@@ -48,7 +48,7 @@ fi
 echo "1️⃣ Проверяем структуру папок на сервере..."
 ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
     # Создаем структуру папок если её нет (не удаляем существующую!)
-    mkdir -p $PROJECT_DIR/{backend/src,backend/migrations,brama/src,brama/data,frontend/src,scripts}
+    mkdir -p $PROJECT_DIR/{backend/src,backend/migrations,brama/src,brama/data,telegram-bot/src,frontend/src,scripts}
     echo '✅ Структура папок готова'
 "
 
@@ -108,7 +108,24 @@ scp -i "$SSH_KEY" -r \
 echo "✅ Brama файлы скопированы"
 
 echo ""
-echo "5️⃣ Копируем Docker и скрипты..."
+echo "5️⃣ Копируем Telegram Bot файлы..."
+scp -i "$SSH_KEY" \
+    "$LOCAL_DIR/telegram-bot/package.json" \
+    "$LOCAL_DIR/telegram-bot/tsconfig.json" \
+    "$LOCAL_DIR/telegram-bot/Dockerfile" \
+    "$LOCAL_DIR/telegram-bot/.dockerignore" \
+    "$LOCAL_DIR/telegram-bot/README.md" \
+    "$LOCAL_DIR/telegram-bot/QUICKSTART.md" \
+    "$SERVER_USER@$SERVER_IP:~/$PROJECT_DIR/telegram-bot/"
+
+scp -i "$SSH_KEY" -r \
+    "$LOCAL_DIR/telegram-bot/src/" \
+    "$SERVER_USER@$SERVER_IP:~/$PROJECT_DIR/telegram-bot/"
+
+echo "✅ Telegram Bot файлы скопированы"
+
+echo ""
+echo "6️⃣ Копируем Docker и скрипты..."
 scp -i "$SSH_KEY" \
     "$LOCAL_DIR/docker-compose.prod.yml" \
     "$LOCAL_DIR/README.md" \
@@ -122,7 +139,7 @@ scp -i "$SSH_KEY" -r \
 echo "✅ Docker конфигурация и скрипты скопированы"
 
 echo ""
-echo "6️⃣ Настраиваем права на сервере..."
+echo "7️⃣ Настраиваем права на сервере..."
 ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
     cd $PROJECT_DIR
     chmod +x scripts/*.sh
@@ -130,7 +147,7 @@ ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
 "
 
 echo ""
-echo "7️⃣ Проверяем Docker на сервере..."
+echo "8️⃣ Проверяем Docker на сервере..."
 ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
     if ! command -v docker &> /dev/null; then
         echo '📦 Устанавливаем Docker...'
@@ -159,7 +176,7 @@ ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
 "
 
 echo ""
-echo "8️⃣ Запускаем приложение в продакшн режиме..."
+echo "9️⃣ Запускаем приложение в продакшн режиме..."
 ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
     cd $PROJECT_DIR
     
@@ -201,14 +218,21 @@ echo ""
 echo "🎉 Деплой завершён успешно!"
 echo ""
 echo "🌐 Приложение доступно по адресам:"
-echo "   Frontend: http://$SERVER_IP"
-echo "   Backend:  http://$SERVER_IP:5000"
-echo "   Brama:    http://$SERVER_IP:5001"
+echo "   Frontend:     http://$SERVER_IP"
+echo "   Backend:      http://$SERVER_IP:5000"
+echo "   Brama:        http://$SERVER_IP:5001"
+echo "   Telegram Bot: @brama_dev_bot (работает в фоновом режиме)"
 echo ""
 echo "🔍 Полезные команды для проверки:"
 echo "   ssh -i $SSH_KEY $SERVER_USER@$SERVER_IP"
 echo "   cd $PROJECT_DIR && docker compose -f docker-compose.prod.yml logs -f"
+echo "   cd $PROJECT_DIR && docker compose -f docker-compose.prod.yml logs telegram-bot"
 echo "   cd $PROJECT_DIR && docker compose -f docker-compose.prod.yml ps"
+echo ""
+echo "📱 Telegram Bot:"
+echo "   Бот: @brama_dev_bot"
+echo "   Whitelist: @v_karlov, @kochemirov"
+echo "   ⚠️  TODO: Не забудьте заменить TELEGRAM_BOT_TOKEN и TELEGRAM_BOT_API_KEY перед продакшеном!"
 echo ""
 if [ "$FULL_REBUILD" != "true" ]; then
     echo "💡 Совет: Следующий деплой будет ещё быстрее благодаря кэшу Docker!"
