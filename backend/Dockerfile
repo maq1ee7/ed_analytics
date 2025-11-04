@@ -14,7 +14,6 @@ RUN npm install
 # Копируем только необходимые файлы для сборки
 COPY src/ ./src/
 COPY migrations/ ./migrations/
-COPY data/ ./data/
 COPY tsconfig.json ./
 
 # Собираем проект
@@ -38,9 +37,8 @@ RUN npm install --omit=dev && npm cache clean --force
 # Копируем собранный код из стадии builder
 COPY --from=builder /app/dist ./dist
 
-# Копируем миграции и данные
+# Копируем миграции
 COPY --from=builder /app/migrations ./migrations
-COPY --from=builder /app/data ./data
 
 # Устанавливаем права пользователю
 RUN chown -R nodeuser:nodejs /app

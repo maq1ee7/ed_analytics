@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =================================
-# ED Analytics - Deploy Script
+# ED Analytics - Deploy Script (FAST)
 # =================================
 
 set -e  # Прекращаем выполнение при ошибке
@@ -15,10 +15,18 @@ SSH_KEY="~/.ssh/llm-cpu/appuser-ed25519"   # Путь к SSH ключу (исп�
 PROJECT_DIR="ed_analytics"                  # Название папки проекта на сервере
 LOCAL_DIR="$(pwd)"                          # Текущая папка (автоматически)
 
-echo "🚀 Начинаем деплой ED Analytics на сервер..."
+# Флаг для полной пересборки (по умолчанию выключен для скорости)
+FULL_REBUILD="${FULL_REBUILD:-false}"
+
+echo "🚀 Начинаем БЫСТРЫЙ деплой ED Analytics на сервер..."
 echo "📍 Сервер: ${SERVER_USER}@${SERVER_IP}"
 echo "🗂️  Локальная папка: ${LOCAL_DIR}"
-echo "⚠️  ВНИМАНИЕ: Полная очистка старых файлов на сервере"
+if [ "$FULL_REBUILD" = "true" ]; then
+    echo "⚠️  Режим: ПОЛНАЯ ПЕРЕСБОРКА (медленно)"
+else
+    echo "⚡ Режим: БЫСТРАЯ ПЕРЕСБОРКА (с использованием кэша)"
+    echo "💡 Для полной пересборки: FULL_REBUILD=true ./scripts/deploy.sh"
+fi
 echo ""
 
 # Раскрываем тильду в пути к SSH ключу
@@ -37,17 +45,11 @@ if [ ! -d "$LOCAL_DIR" ]; then
     exit 1
 fi
 
-echo "1️⃣ Очищаем и создаем структуру папок на сервере..."
+echo "1️⃣ Проверяем структуру папок на сервере..."
 ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
-    # Полностью удаляем старую папку проекта
-    if [ -d '$PROJECT_DIR' ]; then
-        echo '🗑️ Удаляем старую версию проекта...'
-        rm -rf $PROJECT_DIR
-    fi
-    
-    # Создаем чистую структуру папок
-    mkdir -p $PROJECT_DIR/{backend/src,backend/migrations,backend/data,frontend/src,scripts}
-    echo '✅ Чистая структура папок создана'
+    # Создаем структуру папок если её нет (не удаляем существующую!)
+    mkdir -p $PROJECT_DIR/{backend/src,backend/migrations,brama/src,brama/data,frontend/src,scripts}
+    echo '✅ Структура папок готова'
 "
 
 echo ""
@@ -62,10 +64,9 @@ scp -i "$SSH_KEY" \
 scp -i "$SSH_KEY" -r \
     "$LOCAL_DIR/backend/src/" \
     "$LOCAL_DIR/backend/migrations/" \
-    "$LOCAL_DIR/backend/data/" \
     "$SERVER_USER@$SERVER_IP:~/$PROJECT_DIR/backend/"
 
-echo "✅ Backend файлы, миграции и данные скопированы"
+echo "✅ Backend файлы и миграции скопированы"
 
 echo ""
 echo "3️⃣ Копируем frontend файлы..."
@@ -90,7 +91,24 @@ scp -i "$SSH_KEY" -r \
 echo "✅ Frontend файлы скопированы"
 
 echo ""
-echo "4️⃣ Копируем Docker и скрипты..."
+echo "4️⃣ Копируем Brama файлы..."
+scp -i "$SSH_KEY" \
+    "$LOCAL_DIR/brama/package.json" \
+    "$LOCAL_DIR/brama/tsconfig.json" \
+    "$LOCAL_DIR/brama/Dockerfile" \
+    "$LOCAL_DIR/brama/.dockerignore" \
+    "$LOCAL_DIR/brama/README.md" \
+    "$SERVER_USER@$SERVER_IP:~/$PROJECT_DIR/brama/"
+
+scp -i "$SSH_KEY" -r \
+    "$LOCAL_DIR/brama/src/" \
+    "$LOCAL_DIR/brama/data/" \
+    "$SERVER_USER@$SERVER_IP:~/$PROJECT_DIR/brama/"
+
+echo "✅ Brama файлы скопированы"
+
+echo ""
+echo "5️⃣ Копируем Docker и скрипты..."
 scp -i "$SSH_KEY" \
     "$LOCAL_DIR/docker-compose.prod.yml" \
     "$LOCAL_DIR/README.md" \
@@ -104,7 +122,7 @@ scp -i "$SSH_KEY" -r \
 echo "✅ Docker конфигурация и скрипты скопированы"
 
 echo ""
-echo "5️⃣ Настраиваем права на сервере..."
+echo "6️⃣ Настраиваем права на сервере..."
 ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
     cd $PROJECT_DIR
     chmod +x scripts/*.sh
@@ -112,7 +130,7 @@ ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
 "
 
 echo ""
-echo "6️⃣ Проверяем Docker на сервере..."
+echo "7️⃣ Проверяем Docker на сервере..."
 ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
     if ! command -v docker &> /dev/null; then
         echo '📦 Устанавливаем Docker...'
@@ -141,7 +159,7 @@ ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
 "
 
 echo ""
-echo "7️⃣ Запускаем приложение в продакшн режиме..."
+echo "8️⃣ Запускаем приложение в продакшн режиме..."
 ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
     cd $PROJECT_DIR
     
@@ -154,12 +172,25 @@ ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
     
     # Останавливаем существующие контейнеры
     if [ -f docker-compose.prod.yml ]; then
+        echo '🛑 Останавливаем старые контейнеры...'
         \$DOCKER_COMPOSE -f docker-compose.prod.yml down 2>/dev/null || true
     fi
     
-    # Запускаем новую версию
-    echo '🔨 Собираем и запускаем контейнеры...'
-    \$DOCKER_COMPOSE -f docker-compose.prod.yml up --build --force-recreate -d
+    # Если требуется полная пересборка
+    if [ '$FULL_REBUILD' = 'true' ]; then
+        echo '🗑️  Удаляем старые образы для полной пересборки...'
+        docker images | grep 'ed_analytics' | awk '{print \$3}' | xargs -r docker rmi -f 2>/dev/null || true
+        
+        echo '🔨 Собираем контейнеры БЕЗ КЭША (медленно)...'
+        \$DOCKER_COMPOSE -f docker-compose.prod.yml build --no-cache
+    else
+        echo '⚡ Собираем контейнеры С ИСПОЛЬЗОВАНИЕМ КЭША (быстро)...'
+        \$DOCKER_COMPOSE -f docker-compose.prod.yml build
+    fi
+    
+    # Запускаем контейнеры
+    echo '🚀 Запускаем контейнеры...'
+    \$DOCKER_COMPOSE -f docker-compose.prod.yml up -d
     
     echo ''
     echo '📊 Статус контейнеров:'
@@ -172,9 +203,15 @@ echo ""
 echo "🌐 Приложение доступно по адресам:"
 echo "   Frontend: http://$SERVER_IP"
 echo "   Backend:  http://$SERVER_IP:5000"
+echo "   Brama:    http://$SERVER_IP:5001"
 echo ""
 echo "🔍 Полезные команды для проверки:"
 echo "   ssh -i $SSH_KEY $SERVER_USER@$SERVER_IP"
-echo "   cd $PROJECT_DIR && docker-compose -f docker-compose.prod.yml logs"
-echo "   cd $PROJECT_DIR && docker-compose -f docker-compose.prod.yml ps"
+echo "   cd $PROJECT_DIR && docker compose -f docker-compose.prod.yml logs -f"
+echo "   cd $PROJECT_DIR && docker compose -f docker-compose.prod.yml ps"
 echo ""
+if [ "$FULL_REBUILD" != "true" ]; then
+    echo "💡 Совет: Следующий деплой будет ещё быстрее благодаря кэшу Docker!"
+    echo "⚠️  Для полной очистки кэша используйте: FULL_REBUILD=true ./scripts/deploy.sh"
+    echo ""
+fi
