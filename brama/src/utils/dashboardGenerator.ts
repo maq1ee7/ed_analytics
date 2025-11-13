@@ -21,16 +21,16 @@ export class DashboardGenerator {
     console.log('[DashboardGenerator] Инициализация сервисов...');
 
     // Получаем переменные окружения
-    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-    const anthropicModel = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+    const model = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
     const neo4jUri = process.env.NEO4J_URI || 'bolt://localhost:7687';
     const neo4jUser = process.env.NEO4J_USERNAME || 'neo4j';
     const neo4jPassword = process.env.NEO4J_PASSWORD;
     const defaultYear = parseInt(process.env.DEFAULT_YEAR || '2024', 10);
 
     // Валидация обязательных переменных
-    if (!anthropicApiKey) {
-      throw new Error('ANTHROPIC_API_KEY is required');
+    if (!openaiApiKey) {
+      throw new Error('OPENAI_API_KEY is required');
     }
     if (!neo4jPassword) {
       throw new Error('NEO4J_PASSWORD is required');
@@ -38,8 +38,8 @@ export class DashboardGenerator {
 
     // Инициализация LLM Service
     this.llmService = new LLMService(
-      anthropicApiKey,
-      anthropicModel,
+      openaiApiKey,
+      model,
       neo4jUri,
       neo4jUser,
       neo4jPassword,

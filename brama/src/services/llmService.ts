@@ -1,11 +1,9 @@
 /**
- * LLM Service - сервис для обработки запросов через Anthropic Claude API
- * С интеграцией LangSmith для трасировки
+ * LLM Service - сервис для обработки запросов через DeepSeek API (via AITunnel)
  * Портирован с Python модуля langchain_query.py
  */
 
-import Anthropic from '@anthropic-ai/sdk';
-import { HttpsProxyAgent } from 'https-proxy-agent';
+import OpenAI from 'openai';
 import { getTableList, formatTableListForPrompt } from '../utils/tableListLoader';
 import { TableSchemaGenerator } from '../utils/tableSchemaGenerator';
 import { getLLMLogger } from '../utils/llmLogger';
@@ -49,40 +47,33 @@ export interface QueryParams {
  * Класс для обработки запросов на естественном языке к статистической БД
  */
 export class LLMService {
-  private anthropic: Anthropic;
+  private openai: OpenAI;
+  private model: string;
   private tableSchemaGenerator: TableSchemaGenerator;
   private defaultYear: number;
 
   constructor(
-    anthropicApiKey: string,
-    anthropicModel: string,
+    openaiApiKey: string,
+    model: string,
     neo4jUri: string,
     neo4jUser: string,
     neo4jPassword: string,
     defaultYear: number = 2024
   ) {
-    // Настройка прокси для Anthropic API (whitelist подход)
-    const useProxyForAnthropic = process.env.USE_PROXY_FOR_ANTHROPIC === 'true';
-    const proxyUrl = process.env.BRAMA_HTTPS_PROXY || process.env.BRAMA_HTTP_PROXY;
-    const anthropicConfig: any = {
-      apiKey: anthropicApiKey
-    };
+    // Инициализация OpenAI клиента для DeepSeek через AITunnel
+    this.openai = new OpenAI({
+      apiKey: openaiApiKey,
+      baseURL: 'https://api.aitunnel.ru/v1/'
+    });
 
-    if (useProxyForAnthropic && proxyUrl) {
-      console.log(`[LLMService] Anthropic API через прокси: ${proxyUrl}`);
-      anthropicConfig.httpAgent = new HttpsProxyAgent(proxyUrl);
-    } else {
-      console.log('[LLMService] Anthropic API напрямую (без прокси)');
-    }
-
-    // Инициализация Anthropic
-    this.anthropic = new Anthropic(anthropicConfig);
+    this.model = model;
 
     // Инициализация генератора схем таблиц
     this.tableSchemaGenerator = new TableSchemaGenerator(neo4jUri, neo4jUser, neo4jPassword);
     this.defaultYear = defaultYear;
 
-    console.log(`[LLMService] Инициализирован (модель: ${anthropicModel}, год: ${defaultYear})`);
+    console.log(`[LLMService] Инициализирован (модель: ${model}, год: ${defaultYear})`);
+    console.log('[LLMService] DeepSeek API через AITunnel прокси');
     console.log('[LLMService] Локальное логирование активно (директория: logs/llm/)');
   }
 
@@ -94,9 +85,9 @@ export class LLMService {
   }
 
   /**
-   * Вызывает Claude API и логирует локально
+   * Вызывает DeepSeek API через AITunnel и логирует локально
    */
-  private async callClaude(
+  private async callDeepSeek(
     step: number,
     stepName: string,
     prompt: string
@@ -104,9 +95,9 @@ export class LLMService {
     const startTime = Date.now();
 
     try {
-      // Вызов Claude API
-      const response = await this.anthropic.messages.create({
-        model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+      // Вызов DeepSeek API через OpenAI-совместимый интерфейс
+      const response = await this.openai.chat.completions.create({
+        model: this.model,
         max_tokens: 1024,
         temperature: 0,
         messages: [
@@ -117,9 +108,7 @@ export class LLMService {
         ]
       });
 
-      const content = response.content[0];
-      const result = content.type === 'text' ? content.text : '';
-
+      const result = response.choices[0]?.message?.content || '';
       const duration = Date.now() - startTime;
 
       // Локальное логирование
@@ -129,12 +118,12 @@ export class LLMService {
         stepName,
         prompt,
         result,
-        response.usage.input_tokens,
-        response.usage.output_tokens,
+        response.usage?.prompt_tokens || 0,
+        response.usage?.completion_tokens || 0,
         duration
       );
 
-      console.log(`[LLMService] ${stepName} завершен (${duration}ms, ${response.usage.input_tokens}/${response.usage.output_tokens} tokens)`);
+      console.log(`[LLMService] ${stepName} завершен (${duration}ms, ${response.usage?.prompt_tokens}/${response.usage?.completion_tokens} tokens)`);
 
       return result;
 
@@ -184,7 +173,7 @@ export class LLMService {
     console.log('[LLMService] Шаг 1: Определение формы и вида данных...');
 
     const prompt = formatStep1Prompt(query);
-    const response = await this.callClaude(1, 'Шаг 1: form_code + view_type', prompt);
+    const response = await this.callDeepSeek(1, 'Шаг 1: form_code + view_type', prompt);
 
     const result = this.parseJsonResponse(response);
 
@@ -231,7 +220,7 @@ export class LLMService {
     const tableListStr = formatTableListForPrompt(tableList);
 
     const prompt = formatStep2Prompt(query, formCode, tableListStr);
-    const response = await this.callClaude(2, 'Шаг 2: section', prompt);
+    const response = await this.callDeepSeek(2, 'Шаг 2: section', prompt);
 
     const result = this.parseJsonResponse(response);
 
@@ -284,7 +273,7 @@ export class LLMService {
     );
 
     const prompt = formatStep3Prompt(query, formCode, section, tableSchema);
-    const response = await this.callClaude(3, 'Шаг 3: col_index + row_index', prompt);
+    const response = await this.callDeepSeek(3, 'Шаг 3: col_index + row_index', prompt);
 
     const result = this.parseJsonResponse(response);
 
