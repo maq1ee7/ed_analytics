@@ -39,13 +39,7 @@ export class TaskProcessor {
     console.log(`[Worker] Question: ${question}`);
 
     try {
-      // Mock задержка - имитация LLM обработки
-      const processingTime = parseInt(process.env.MOCK_PROCESSING_TIME || '15000', 10);
-      console.log(`[Worker] Simulating LLM processing for ${processingTime}ms`);
-      
-      await new Promise(resolve => setTimeout(resolve, processingTime));
-
-      // Генерируем dashboard (пока mock данные)
+      // Генерируем dashboard через LLM + Neo4j
       console.log(`[Worker] Generating dashboard for task ${taskId}`);
       const dashboard = await DashboardGenerator.generateDashboard(question);
 

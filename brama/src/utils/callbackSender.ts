@@ -28,7 +28,8 @@ export class CallbackSender {
               'X-API-Key': apiKey,
               'Content-Type': 'application/json'
             },
-            timeout: 10000 // 10 секунд таймаут
+            timeout: 10000, // 10 секунд таймаут
+            proxy: false // Внутренние запросы к backend напрямую, без прокси
           }
         );
 

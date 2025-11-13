@@ -13,6 +13,7 @@ dotenv.config();
 import processRoutes from './routes/process';
 import { QueueService } from './services/queueService';
 import { TaskProcessor } from './workers/taskProcessor';
+import { DashboardGenerator } from './utils/dashboardGenerator';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '5001', 10);
@@ -28,6 +29,10 @@ app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
+
+// Инициализация Dashboard Generator (LLM + Neo4j сервисы)
+console.log('🤖 Инициализация LLM и Neo4j сервисов...');
+DashboardGenerator.initialize();
 
 // Инициализация Queue и Worker
 const queueService = QueueService.getInstance();
@@ -113,6 +118,7 @@ const gracefulShutdown = async (signal: string) => {
   
   try {
     await TaskProcessor.shutdown();
+    await DashboardGenerator.shutdown();
     process.exit(0);
   } catch (error) {
     console.error('Error during shutdown:', error);
