@@ -9,9 +9,11 @@ import { Telegraf } from 'telegraf';
 export class RedisService {
   private queue: Queue<TelegramNotification>;
   private bot: Telegraf;
+  private onQueryComplete: (queryUid: string) => void;
 
-  constructor(bot: Telegraf) {
+  constructor(bot: Telegraf, onQueryComplete: (queryUid: string) => void) {
     this.bot = bot;
+    this.onQueryComplete = onQueryComplete;
 
     console.log(`[RedisService] Connecting to Redis at ${REDIS_HOST}:${REDIS_PORT}`);
 
@@ -73,6 +75,9 @@ export class RedisService {
 
         console.log(`[RedisService] Error notification sent to chat ${chatId}`);
       }
+
+      // Вызываем callback для очистки сессии и отмены таймера
+      this.onQueryComplete(uid);
 
     } catch (error) {
       console.error(`[RedisService] Failed to send notification to chat ${chatId}:`, error);

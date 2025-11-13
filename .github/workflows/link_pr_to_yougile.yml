@@ -50,7 +50,7 @@ jobs:
         if: env.TICKET_ID != ''
         run: |
           # Формируем новое описание (без "null" в начале)
-          UPDATED_DESCRIPTION="$CURRENT_DESCRIPTION\n\n🔗 GitHub PR: #${{ env.PR_NUMBER }} (${{ env.PR_URL }})"
+          UPDATED_DESCRIPTION="$CURRENT_DESCRIPTION\n\n🔗 GitHub PR: #${{ env.PR_NUMBER }} ${{ env.PR_URL }}"
 
           # Отправляем обновление в YouGile
           curl -X PUT \
