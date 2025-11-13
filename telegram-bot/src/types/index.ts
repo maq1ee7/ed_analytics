@@ -26,5 +26,6 @@ export interface UserSession {
   username?: string;
   activeQueryUid?: string;
   queryStartTime?: number;
+  timeoutId?: NodeJS.Timeout;
 }
 

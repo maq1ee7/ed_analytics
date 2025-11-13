@@ -20,7 +20,8 @@ class TelegramBot {
     this.bot = new Telegraf(TELEGRAM_BOT_TOKEN);
 
     // Инициализируем Redis сервис для получения уведомлений
-    this.redisService = new RedisService(this.bot);
+    // Передаем callback для очистки сессий и отмены таймеров
+    this.redisService = new RedisService(this.bot, this.handleQueryCompletion.bind(this));
 
     // Регистрируем обработчики
     this.setupHandlers();
@@ -71,20 +72,21 @@ class TelegramBot {
         try {
           const response = await ApiService.submitQuery(messageText, chatId);
 
-          // Сохраняем сессию
+          // Устанавливаем таймаут на 1 минуту
+          const timeoutId = setTimeout(() => {
+            this.checkQueryTimeout(chatId, response.uid);
+          }, QUERY_TIMEOUT_MS);
+
+          // Сохраняем сессию с timeoutId
           this.activeSessions.set(chatId, {
             chatId,
             username,
             activeQueryUid: response.uid,
-            queryStartTime: Date.now()
+            queryStartTime: Date.now(),
+            timeoutId
           });
 
           console.log(`[TelegramBot] Query submitted successfully: ${response.uid}`);
-
-          // Устанавливаем таймаут на 1 минуту
-          setTimeout(() => {
-            this.checkQueryTimeout(chatId, response.uid);
-          }, QUERY_TIMEOUT_MS);
 
         } catch (error) {
           console.error('[TelegramBot] Error submitting query:', error);
@@ -104,6 +106,29 @@ class TelegramBot {
       console.error('[TelegramBot] Bot error:', error);
       console.error('[TelegramBot] Error context:', ctx);
     });
+  }
+
+  /**
+   * Обрабатывает завершение запроса (успешное или с ошибкой)
+   * Вызывается из RedisService при получении уведомления
+   */
+  private handleQueryCompletion(queryUid: string): void {
+    // Находим сессию с этим queryUid
+    for (const [chatId, session] of this.activeSessions) {
+      if (session.activeQueryUid === queryUid) {
+        console.log(`[TelegramBot] Query ${queryUid} completed, clearing session for chat ${chatId}`);
+        
+        // Отменяем таймер, если он существует
+        if (session.timeoutId) {
+          clearTimeout(session.timeoutId);
+          console.log(`[TelegramBot] Timeout cancelled for query ${queryUid}`);
+        }
+        
+        // Очищаем сессию
+        this.activeSessions.delete(chatId);
+        break;
+      }
+    }
   }
 
   /**
