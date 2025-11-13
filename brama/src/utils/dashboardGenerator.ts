@@ -1,78 +1,125 @@
-import fs from 'fs';
-import path from 'path';
 import { DashboardData } from '../types';
+import { LLMService } from '../services/llmService';
+import { Neo4jService } from '../services/neo4jService';
 
 /**
- * Mock генератор дашбордов
- * Загружает dashboardExample.json в качестве заглушки
- * 
- * TODO: Заменить на реальную интеграцию с LLM
+ * Генератор дашбордов с интеграцией LLM и Neo4j
  */
 export class DashboardGenerator {
-  private static cachedDashboard: DashboardData | null = null;
+  private static llmService: LLMService | null = null;
+  private static neo4jService: Neo4jService | null = null;
 
   /**
-   * Загружает пример дашборда из JSON файла
+   * Инициализирует сервисы (вызывается один раз при старте)
    */
-  static loadDashboardExample(): DashboardData {
-    try {
-      // Используем кэш для избежания повторного чтения файла
-      if (this.cachedDashboard) {
-        return this.cachedDashboard;
-      }
-
-      // Путь к файлу dashboardExample.json в brama/data
-      const dashboardPath = path.join(
-        __dirname, 
-        '../../data/dashboardExample.json'
-      );
-
-      // Проверяем существование файла
-      if (!fs.existsSync(dashboardPath)) {
-        console.error('Dashboard example file not found:', dashboardPath);
-        throw new Error('Dashboard example file not found');
-      }
-
-      // Читаем и парсим JSON
-      const fileContent = fs.readFileSync(dashboardPath, 'utf-8');
-      const dashboard = JSON.parse(fileContent) as DashboardData;
-
-      // Кэшируем результат
-      this.cachedDashboard = dashboard;
-
-      console.log('Dashboard example loaded successfully');
-      return dashboard;
-
-    } catch (error) {
-      console.error('Error loading dashboard example:', error);
-      throw new Error('Failed to load dashboard example');
+  static initialize(): void {
+    if (this.llmService && this.neo4jService) {
+      console.log('[DashboardGenerator] Сервисы уже инициализированы');
+      return;
     }
+
+    console.log('[DashboardGenerator] Инициализация сервисов...');
+
+    // Получаем переменные окружения
+    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+    const anthropicModel = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
+    const neo4jUri = process.env.NEO4J_URI || 'bolt://localhost:7687';
+    const neo4jUser = process.env.NEO4J_USERNAME || 'neo4j';
+    const neo4jPassword = process.env.NEO4J_PASSWORD;
+    const defaultYear = parseInt(process.env.DEFAULT_YEAR || '2024', 10);
+
+    // Валидация обязательных переменных
+    if (!anthropicApiKey) {
+      throw new Error('ANTHROPIC_API_KEY is required');
+    }
+    if (!neo4jPassword) {
+      throw new Error('NEO4J_PASSWORD is required');
+    }
+
+    // Инициализация LLM Service
+    this.llmService = new LLMService(
+      anthropicApiKey,
+      anthropicModel,
+      neo4jUri,
+      neo4jUser,
+      neo4jPassword,
+      defaultYear
+    );
+
+    // Инициализация Neo4j Service
+    this.neo4jService = new Neo4jService(
+      neo4jUri,
+      neo4jUser,
+      neo4jPassword
+    );
+
+    console.log('[DashboardGenerator] ✅ Сервисы инициализированы успешно');
   }
 
   /**
    * Генерирует ответ на вопрос пользователя
-   * Mock реализация - возвращает dashboardExample.json
    * 
    * @param question - вопрос пользователя
    * @returns DashboardData
    */
   static async generateDashboard(question: string): Promise<DashboardData> {
-    console.log('Generating dashboard for question:', question);
+    console.log(`[DashboardGenerator] Генерация dashboard для запроса: "${question}"`);
     
-    // TODO: Здесь будет интеграция с LLM:
-    // - Отправка запроса в OpenAI/Claude/другой LLM
-    // - Парсинг ответа
-    // - Формирование структуры дашборда
-    
-    // Пока просто возвращаем пример
-    return this.loadDashboardExample();
+    // Инициализируем сервисы если еще не инициализированы
+    if (!this.llmService || !this.neo4jService) {
+      this.initialize();
+    }
+
+    try {
+      // 1. LLM определяет параметры (3 шага)
+      console.log('[DashboardGenerator] Шаг 1-3: Обработка запроса через LLM...');
+      const params = await this.llmService!.processQuery(question);
+
+      console.log('[DashboardGenerator] Параметры получены:', {
+        form_code: params.form_code,
+        view_type: params.view_type,
+        section: params.section,
+        col_index: params.col_index,
+        row_index: params.row_index
+      });
+
+      // 2. Извлекаем данные из Neo4j и строим dashboard
+      console.log('[DashboardGenerator] Шаг 4: Извлечение данных из Neo4j...');
+      const dashboard = await this.neo4jService!.exportDashboard(
+        params.form_code,
+        params.view_type,
+        params.section,
+        params.col_index,
+        params.row_index
+      );
+
+      console.log('[DashboardGenerator] ✅ Dashboard успешно сгенерирован');
+      return dashboard;
+
+    } catch (error) {
+      console.error('[DashboardGenerator] ❌ Ошибка генерации dashboard:', error);
+      throw error;
+    }
   }
 
   /**
-   * Очищает кэш (полезно для тестирования)
+   * Закрывает подключения к сервисам (для graceful shutdown)
    */
-  static clearCache(): void {
-    this.cachedDashboard = null;
+  static async shutdown(): Promise<void> {
+    console.log('[DashboardGenerator] Закрытие подключений к сервисам...');
+    
+    if (this.llmService) {
+      await this.llmService.close();
+    }
+    
+    if (this.neo4jService) {
+      await this.neo4jService.close();
+    }
+
+    this.llmService = null;
+    this.neo4jService = null;
+
+    console.log('[DashboardGenerator] ✅ Подключения закрыты');
   }
 }
 

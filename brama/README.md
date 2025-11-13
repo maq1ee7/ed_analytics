@@ -56,9 +56,19 @@
 ### 5. **Middleware** (`src/middleware/apiKeyAuth.ts`)
 - Проверка API ключа для всех защищенных endpoints
 
-### 6. **Utilities**
-- `src/utils/dashboardGenerator.ts` - Mock генератор дашбордов
+### 6. **LLM Services**
+- `src/services/llmService.ts` - Интеграция с Anthropic Claude API
+- `src/services/neo4jService.ts` - Работа с Neo4j базой данных
+- `src/services/queueService.ts` - Bull Queue (уже описан выше)
+
+### 7. **Utilities**
+- `src/utils/dashboardGenerator.ts` - Генератор дашбордов на основе LLM
 - `src/utils/callbackSender.ts` - Отправка результатов в Backend
+- `src/utils/llmLogger.ts` - Логирование LLM запросов
+- `src/utils/prompts.ts` - Промпты для Claude
+- `src/utils/regionMapper.ts` - Маппинг регионов
+- `src/utils/tableListLoader.ts` - Загрузка списка таблиц
+- `src/utils/tableSchemaGenerator.ts` - Генерация схем таблиц
 
 ## 🚀 Запуск
 
@@ -90,27 +100,188 @@ npm start
 docker-compose up brama
 ```
 
-## 🔧 Environment Variables
+## 🔧 Настройка Environment Variables
+
+### 📋 Создание .env файла
+
+Все переменные окружения берутся из корневого `.env.example` файла проекта.
+
+**Шаг 1:** Скопируйте `.env.example`
+```bash
+# В корне проекта
+cp .env.example .env
+```
+
+**Шаг 2:** Обновите следующие переменные на **реальные значения**:
+
+```bash
+# Anthropic Claude API
+ANTHROPIC_API_KEY=ваш_реальный_ключ_anthropic
+ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+
+# Neo4j Database
+NEO4J_PASSWORD=ваш_реальный_пароль_neo4j
+
+# API Keys (должны совпадать с backend/.env)
+ALLOWED_API_KEY=ваш_api_ключ
+BACKEND_CORE_API_KEY=ваш_api_ключ
+```
+
+**Шаг 3:** Остальные переменные можно оставить по умолчанию:
 
 ```bash
 # Server
-NODE_ENV=development          # development | production
-PORT=5001                     # Порт сервера
+NODE_ENV=production
+PORT=5001
 
 # Redis
-REDIS_HOST=redis              # Хост Redis
-REDIS_PORT=6379               # Порт Redis
-
-# Security
-ALLOWED_API_KEY=your-secret-key  # API ключ для аутентификации
+REDIS_HOST=redis
+REDIS_PORT=6379
 
 # Backend
-BACKEND_URL=http://backend:5000  # URL основного backend для callbacks
+BACKEND_URL=http://backend:5000
 
-# Processing
-MOCK_PROCESSING_TIME=15000    # Время mock обработки (мс)
-WORKER_CONCURRENCY=2          # Количество параллельных задач
+# Worker
+WORKER_CONCURRENCY=2
+
+# Data
+DEFAULT_YEAR=2024
 ```
+
+### 🔑 Где получить API ключи
+
+#### 1. Anthropic Claude API
+
+**Шаги:**
+1. Перейдите на https://console.anthropic.com/
+2. Зарегистрируйтесь или войдите
+3. Перейдите в **API Keys**
+4. Нажмите **Create Key**
+5. Скопируйте ключ (начинается с `sk-ant-...`)
+
+**Стоимость:**
+- Claude 3.5 Sonnet: ~$3 за 1M input tokens, ~$15 за 1M output tokens
+- Один запрос пользователя ≈ $0.003-0.005 (менее цента)
+
+#### 2. Neo4j Password
+
+Сгенерируйте надежный пароль:
+
+```bash
+openssl rand -base64 24
+```
+
+#### 3. Backend API Key
+
+Сгенерируйте случайный секретный ключ:
+
+```bash
+openssl rand -hex 32
+```
+
+**⚠️ Важно:** Используйте **один и тот же** ключ для `ALLOWED_API_KEY` и `BACKEND_CORE_API_KEY`
+
+### 🚀 Применение изменений
+
+После изменения `.env` файла перезапустите сервис:
+
+```bash
+# Вариант 1: Быстрый перезапуск
+docker-compose restart brama
+
+# Вариант 2: Полная пересборка
+docker-compose down
+docker-compose up -d --build brama
+```
+
+### ✅ Проверка настройки
+
+**1. Проверьте запуск сервиса:**
+
+```bash
+docker logs ed_analytics_brama_dev
+```
+
+Должны увидеть:
+```
+🤖 Инициализация LLM и Neo4j сервисов...
+[LLMService] Инициализирован (модель: claude-3-5-sonnet-20241022, год: 2024)
+[Neo4jService] Подключение к Neo4j: bolt://localhost:7687
+✅ Сервисы инициализированы успешно
+🚀 Brama Backend is running
+```
+
+**2. Проверьте health endpoint:**
+
+```bash
+curl http://localhost:5001/health
+```
+
+**3. Проверьте переменные окружения:**
+
+```bash
+docker exec ed_analytics_brama_dev env | grep -E "ANTHROPIC|NEO4J"
+```
+
+**4. Проверьте логирование LLM запросов:**
+
+```bash
+# Список логов
+docker exec ed_analytics_brama_dev ls -la /app/logs/llm/
+
+# Последний лог
+docker exec ed_analytics_brama_dev ls -lt /app/logs/llm/ | head -2
+```
+
+### 📊 Локальное логирование LLM запросов
+
+Все запросы к Claude API автоматически логируются в JSON файлы.
+
+**Расположение:** `brama/logs/llm/`
+
+**Формат файла:** `query_[timestamp]_[id].json`
+
+**Пример лога:**
+```json
+{
+  "queryId": "query_1234567890_abc123",
+  "question": "Сколько школьников в волгограде",
+  "timestamp": "2024-11-05T10:30:00.000Z",
+  "steps": [
+    {
+      "step": 1,
+      "stepName": "Шаг 1: form_code + view_type",
+      "prompt": "Ты — ассистент для работы...",
+      "response": "{\"form_code\": \"OO_1\"}",
+      "inputTokens": 150,
+      "outputTokens": 25,
+      "durationMs": 1200,
+      "cost": 0.00082
+    }
+  ],
+  "totalTokens": 650,
+  "totalCost": 0.00428,
+  "totalDurationMs": 4500
+}
+```
+
+**Полезные команды:**
+
+```bash
+# Количество логов
+docker exec ed_analytics_brama_dev find /app/logs/llm/ -name "*.json" | wc -l
+
+# Суммарная стоимость
+docker exec ed_analytics_brama_dev cat /app/logs/llm/*.json | grep totalCost | awk '{sum+=$2} END {print "Total: $" sum}'
+```
+
+### 🔒 Безопасность
+
+⚠️ **ВАЖНО:**
+- ❌ НЕ коммитьте `.env` файл в Git
+- ❌ НЕ храните API ключи в открытом виде
+- ✅ Используйте разные ключи для dev/prod окружений
+- ✅ Регулярно ротируйте API ключи
 
 ## 📊 Bull Board UI
 
@@ -176,10 +347,12 @@ WORKER_CONCURRENCY=2          # Количество параллельных з
 1. **Backend отправляет задачу** → `POST /api/process`
 2. **Brama добавляет в очередь** → Bull Queue
 3. **Worker берет задачу** → Начинает обработку
-4. **Mock LLM обработка** → 15 секунд задержка
-5. **Генерация дашборда** → DashboardGenerator
-6. **Отправка результата** → `POST {callbackUrl}`
-7. **Backend сохраняет результат** → БД обновляется
+4. **LLM обработка** → Claude API анализирует запрос
+5. **Работа с Neo4j** → Выполнение Cypher запросов
+6. **Генерация дашборда** → DashboardGenerator
+7. **Отправка результата** → `POST {callbackUrl}`
+8. **Backend сохраняет результат** → БД обновляется
+9. **Локальное логирование** → Сохранение в `logs/llm/`
 
 ## 🛠️ Разработка
 
@@ -188,63 +361,52 @@ WORKER_CONCURRENCY=2          # Количество параллельных з
 ```
 brama/
 ├── src/
-│   ├── server.ts              # Основной сервер
+│   ├── server.ts                      # Основной сервер
 │   ├── routes/
-│   │   └── process.ts         # POST /api/process
+│   │   └── process.ts                 # POST /api/process
 │   ├── middleware/
-│   │   └── apiKeyAuth.ts      # Проверка API ключа
+│   │   └── apiKeyAuth.ts              # Проверка API ключа
 │   ├── services/
-│   │   └── queueService.ts    # Bull Queue setup
+│   │   ├── queueService.ts            # Bull Queue setup
+│   │   ├── llmService.ts              # Anthropic Claude API
+│   │   └── neo4jService.ts            # Neo4j database
 │   ├── workers/
-│   │   └── taskProcessor.ts   # Worker обработки
+│   │   └── taskProcessor.ts           # Worker обработки
 │   ├── utils/
-│   │   ├── dashboardGenerator.ts  # Mock LLM генератор
-│   │   └── callbackSender.ts      # Отправка callbacks
+│   │   ├── dashboardGenerator.ts      # LLM генератор дашбордов
+│   │   ├── callbackSender.ts          # Отправка callbacks
+│   │   ├── llmLogger.ts               # Логирование LLM
+│   │   ├── prompts.ts                 # Промпты для Claude
+│   │   ├── regionMapper.ts            # Маппинг регионов
+│   │   ├── tableListLoader.ts         # Загрузка списков таблиц
+│   │   └── tableSchemaGenerator.ts    # Генерация схем
 │   └── types/
-│       └── index.ts           # TypeScript типы
+│       └── index.ts                   # TypeScript типы
 ├── data/
-│   └── dashboardExample.json  # Mock данные
+│   ├── dashboardExample.json          # Пример дашборда
+│   ├── regions.json                   # Данные регионов
+│   ├── Список_таблиц_ОО_1.csv        # Список таблиц ОО_1
+│   └── Список_таблиц_ОО_2.csv        # Список таблиц ОО_2
+├── logs/llm/                          # LLM логи (создается автоматически)
 ├── package.json
 ├── tsconfig.json
 ├── Dockerfile
 └── README.md
 ```
 
-### Добавление реального LLM
+### LLM Интеграция
 
-Для интеграции с реальным LLM (например, OpenAI GPT):
+Brama интегрирован с **Anthropic Claude API** для обработки запросов.
 
-1. Установить зависимость:
-```bash
-npm install openai
-```
+**Основные компоненты:**
 
-2. Обновить `src/utils/dashboardGenerator.ts`:
-```typescript
-import OpenAI from 'openai';
+- `src/services/llmService.ts` - Сервис для работы с Anthropic Claude API
+- `src/services/neo4jService.ts` - Сервис для работы с Neo4j базой данных
+- `src/utils/dashboardGenerator.ts` - Генератор дашбордов на основе LLM
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+**Используемая модель:** `claude-3-5-sonnet-20241022`
 
-static async generateDashboard(question: string): Promise<DashboardData> {
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4",
-    messages: [
-      { role: "system", content: "Generate dashboard JSON..." },
-      { role: "user", content: question }
-    ]
-  });
-  
-  // Парсинг ответа и формирование DashboardData
-  return JSON.parse(completion.choices[0].message.content);
-}
-```
-
-3. Добавить env переменную:
-```bash
-OPENAI_API_KEY=sk-...
-```
+**Логирование:** Все запросы к Claude автоматически логируются в `logs/llm/` для анализа и отладки
 
 ## 📈 Мониторинг
 
@@ -255,8 +417,11 @@ Brama выводит подробные логи для отладки:
 ```
 [Queue] Adding task abc-123 to queue
 [Worker] Processing task abc-123
-[Worker] Question: Какая динамика...
-[Worker] Simulating LLM processing for 15000ms
+[Worker] Question: Сколько школьников в Волгограде?
+[LLMService] Шаг 1: Определение form_code и view_type
+[LLMService] Ответ Claude: {"form_code": "OO_1", "view_type": "гоу_город"}
+[Neo4jService] Executing Cypher query...
+[LLMLogger] Сохранение лога в logs/llm/query_abc123.json
 [Worker] Generating dashboard for task abc-123
 [Worker] Sending success result for task abc-123
 [Callback] Success: 200 OK
@@ -290,13 +455,32 @@ Brama выводит подробные логи для отладки:
 ### Проблема: Очередь переполнена
 
 **Решение:**
-1. Увеличьте `WORKER_CONCURRENCY`
-2. Уменьшите `MOCK_PROCESSING_TIME`
+1. Увеличьте `WORKER_CONCURRENCY` (по умолчанию 2)
+2. Проверьте производительность LLM запросов в логах
 3. Очистите failed задачи через Bull Board
+4. Рассмотрите возможность кэширования частых запросов
+
+### Проблема: Ошибки при обращении к Claude API
+
+**Решение:**
+1. Проверьте валидность `ANTHROPIC_API_KEY`
+2. Проверьте баланс аккаунта Anthropic
+3. Проверьте rate limits: https://console.anthropic.com/
+4. Просмотрите логи в `logs/llm/` для детальной информации
+
+### Проблема: Ошибки подключения к Neo4j
+
+**Решение:**
+1. Проверьте что Neo4j контейнер запущен: `docker ps | grep neo4j`
+2. Проверьте `NEO4J_URI` и `NEO4J_PASSWORD` в `.env`
+3. Проверьте логи Neo4j: `docker logs <neo4j_container>`
+4. Убедитесь что база данных восстановлена из дампа
 
 ## 📝 TODO
 
-- [ ] Интеграция с реальным LLM (OpenAI/Claude)
+- [x] Интеграция с Anthropic Claude API
+- [x] Локальное логирование LLM запросов
+- [x] Интеграция с Neo4j базой данных
 - [ ] Добавить rate limiting
 - [ ] Добавить приоритеты задач
 - [ ] Кэширование результатов

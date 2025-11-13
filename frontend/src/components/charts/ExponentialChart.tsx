@@ -116,7 +116,8 @@ const ExponentialChart: React.FC<ExponentialChartProps> = ({ data, className = '
             return `X: ${context[0].label}`;
           },
           label: (context: TooltipItem<'line'>) => {
-            return `Y: ${parseFloat(context.parsed.y.toString()).toFixed(2)}`;
+            const yValue = context.parsed.y ?? 0;
+            return `Y: ${parseFloat(yValue.toString()).toFixed(2)}`;
           },
         },
       },
