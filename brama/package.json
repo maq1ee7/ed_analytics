@@ -23,7 +23,7 @@
     "@bull-board/api": "^5.10.2",
     "@bull-board/ui": "^5.10.2",
     "neo4j-driver": "^5.15.0",
-    "@anthropic-ai/sdk": "^0.27.0",
+    "openai": "^4.28.0",
     "csv-parse": "^5.5.3",
     "https-proxy-agent": "^7.0.2"
   },
