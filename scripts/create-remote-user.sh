@@ -29,6 +29,10 @@ DEFAULT_SERVER_USER="${SERVER_USER:-appuser}"
 DEFAULT_SSH_KEY="${SSH_KEY:-~/.ssh/llm-cpu/appuser-ed25519}"
 DEFAULT_PROJECT_DIR="${PROJECT_DIR:-ed_analytics}"
 
+# Значения по умолчанию для БД
+DEFAULT_POSTGRES_USER="${POSTGRES_USER:-ed_user}"
+DEFAULT_POSTGRES_DB="${POSTGRES_DB:-ed_analytics}"
+
 # Если передан аргумент, используем его как хост
 if [ -n "$1" ]; then
     REMOTE_HOST="$1"
@@ -53,6 +57,8 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${YELLOW}🖥️  Удаленный хост:${NC} $REMOTE_HOST"
 echo -e "${YELLOW}🔑 SSH ключ:${NC} $SSH_KEY"
 echo -e "${YELLOW}📁 Путь к проекту:${NC} $REMOTE_PROJECT_PATH"
+echo -e "${YELLOW}🗄️  База данных:${NC} $DEFAULT_POSTGRES_DB"
+echo -e "${YELLOW}👤 Пользователь БД:${NC} $DEFAULT_POSTGRES_USER"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
@@ -137,7 +143,7 @@ echo -e "${BLUE}👤 Создаю пользователя...${NC}"
 # Экранируем $ в хеше для правильной передачи через SSH и SQL
 ESCAPED_HASH=$(echo "$PASSWORD_HASH" | sed 's/\$/\\$/g')
 
-ssh -i "$SSH_KEY" "$REMOTE_HOST" "docker exec $POSTGRES_CONTAINER psql -U ed_user -d ed_analytics -c \"
+ssh -i "$SSH_KEY" "$REMOTE_HOST" "docker exec $POSTGRES_CONTAINER psql -U $DEFAULT_POSTGRES_USER -d $DEFAULT_POSTGRES_DB -c \"
 DO \\\$\\\$
 DECLARE
     user_id INTEGER;
