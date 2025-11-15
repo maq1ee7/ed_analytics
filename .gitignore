@@ -157,3 +157,4 @@ certs/
 *.pem.local
 
 
+neo4j.dump
