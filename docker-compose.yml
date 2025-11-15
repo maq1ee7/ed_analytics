@@ -105,6 +105,7 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV}
       - PORT=${BACKEND_PORT}
+      - SERVER_IP=${SERVER_IP}
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
       - DB_NAME=${DB_NAME}
@@ -139,6 +140,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL}
     container_name: ed_analytics_frontend_dev
     ports:
       - "${FRONTEND_PORT}:3000"

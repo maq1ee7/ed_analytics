@@ -14,8 +14,8 @@ RUN npm install
 # Копируем исходный код
 COPY . .
 
-# Устанавливаем переменную для сборки
-ARG VITE_API_URL=http://130.193.46.4:5000
+# Устанавливаем переменную для сборки (получаем из docker-compose build args)
+ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
 # Собираем production build

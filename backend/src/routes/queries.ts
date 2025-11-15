@@ -414,7 +414,8 @@ router.post('/callbacks/:uid', apiKeyAuth, async (req: Request, res: Response): 
       
       // Если это запрос от Telegram, отправляем уведомление
       if (query.telegram_chat_id) {
-        const dashboardUrl = `http://130.193.46.4/dashboard/${uid}`;
+        const serverIp = process.env.SERVER_IP || '130.193.46.4';
+        const dashboardUrl = `http://${serverIp}/dashboard/${uid}`;
         const notificationQueue = NotificationQueueService.getInstance();
         
         await notificationQueue.addNotification({
