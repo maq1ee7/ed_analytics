@@ -20,11 +20,12 @@ const PORT = parseInt(process.env.PORT || '5000', 10);
 app.use(helmet());
 
 // CORS конфигурация для продакшена
+const SERVER_IP = process.env.SERVER_IP || '130.193.46.4';
 const corsOptions = {
   origin: [
     'http://localhost:3000',           // Локальная разработка
-    'http://130.193.46.4',             // Продакшн frontend (порт 80)
-    'http://130.193.46.4:80',          // Продакшн frontend (явно указан порт)
+    `http://${SERVER_IP}`,             // Продакшн frontend (порт 80)
+    `http://${SERVER_IP}:80`,          // Продакшн frontend (явно указан порт)
     'http://127.0.0.1:3000',           // Локальная разработка (альтернативный адрес)
   ],
   credentials: true,                   // Разрешаем cookies и auth headers
@@ -96,7 +97,8 @@ const startServer = async (): Promise<void> => {
       console.log(`🚀 Backend server is running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🌐 API available at: http://0.0.0.0:${PORT}/api/hello`);
-      console.log(`🔗 External access: http://130.193.46.4:${PORT}/api/hello`);
+      console.log(`🔗 External access: http://${SERVER_IP}:${PORT}/api/hello`);
+      console.log(`✅ CORS allowed origins: http://${SERVER_IP}, http://localhost:3000`);
       console.log('');
     });
     
