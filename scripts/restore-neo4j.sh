@@ -12,15 +12,21 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Параметры
-SERVER_IP=${1:-"130.193.46.4"}
+# Загружаем переменные из .env если он существует
+if [ -f "$(pwd)/.env" ]; then
+    # Экспортируем переменные из .env (игнорируем комментарии и пустые строки)
+    export $(grep -v '^#' "$(pwd)/.env" | grep -v '^$' | xargs)
+fi
+
+# Параметры (приоритет: аргументы скрипта > переменные окружения > значения по умолчанию)
+SERVER_IP=${1:-${SERVER_IP:-"130.193.46.4"}}
 DUMP_FILE=${2:-"neo4j.dump"}
 SSH_USER=${SSH_USER:-"appuser"}
 SSH_KEY=${SSH_KEY:-"~/.ssh/llm-cpu/appuser-ed25519"}
+PROJECT_DIR=${PROJECT_DIR:-"ed_analytics"}
 DOCKER_COMPOSE_FILE="docker-compose.prod.yml"
 NEO4J_CONTAINER="ed_analytics_neo4j_prod"
 DATABASE_NAME="neo4j"
-PROJECT_DIR="ed_analytics"
 
 echo -e "${BLUE}╔════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║  Neo4j Database Restore Script         ║${NC}"
