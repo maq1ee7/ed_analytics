@@ -17,11 +17,17 @@ NC='\033[0m' # No Color
 # Конфигурация удаленного сервера
 # =================================
 
+# Загружаем переменные из .env если он существует
+if [ -f "$(pwd)/.env" ]; then
+    # Экспортируем переменные из .env (игнорируем комментарии и пустые строки)
+    export $(grep -v '^#' "$(pwd)/.env" | grep -v '^$' | xargs)
+fi
+
 # Значения по умолчанию (из deploy.sh)
-DEFAULT_SERVER_IP="130.193.46.4"
-DEFAULT_SERVER_USER="appuser"
-DEFAULT_SSH_KEY="~/.ssh/llm-cpu/appuser-ed25519"
-DEFAULT_PROJECT_DIR="ed_analytics"
+DEFAULT_SERVER_IP="${SERVER_IP:-130.193.46.4}"
+DEFAULT_SERVER_USER="${SERVER_USER:-appuser}"
+DEFAULT_SSH_KEY="${SSH_KEY:-~/.ssh/llm-cpu/appuser-ed25519}"
+DEFAULT_PROJECT_DIR="${PROJECT_DIR:-ed_analytics}"
 
 # Если передан аргумент, используем его как хост
 if [ -n "$1" ]; then
