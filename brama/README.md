@@ -56,19 +56,47 @@
 ### 5. **Middleware** (`src/middleware/apiKeyAuth.ts`)
 - Проверка API ключа для всех защищенных endpoints
 
-### 6. **LLM Services**
-- `src/services/llmService.ts` - Интеграция с DeepSeek API (через AITunnel)
-- `src/services/neo4jService.ts` - Работа с Neo4j базой данных
-- `src/services/queueService.ts` - Bull Queue (уже описан выше)
+### 6. **Query Agent** (`src/query-agent/`)
+**Роль:** Анализ запроса через LangGraph workflow (4 этапа)
 
-### 7. **Utilities**
-- `src/utils/dashboardGenerator.ts` - Генератор дашбордов на основе LLM
-- `src/utils/callbackSender.ts` - Отправка результатов в Backend
-- `src/utils/llmLogger.ts` - Логирование LLM запросов
-- `src/utils/prompts.ts` - Промпты для DeepSeek
-- `src/utils/regionMapper.ts` - Маппинг регионов
-- `src/utils/tableListLoader.ts` - Загрузка списка таблиц
-- `src/utils/tableSchemaGenerator.ts` - Генерация схем таблиц
+- `index.ts` - Главный класс QueryAgent
+- `types.ts` - TypeScript интерфейсы
+- `graph/` - LangGraph workflow
+  - `graph.ts` - Определение графа
+  - `state.ts` - QueryState интерфейс
+  - `nodes/` - Узлы графа
+    - `selectStatformNode.ts` - Этап 1: Выбор статформы
+    - `selectSectionNode.ts` - Этап 2: Выбор раздела
+    - `selectViewCellsNode.ts` - Этап 3: Выбор представления и ячейки
+    - `generateDashboardNode.ts` - Этап 4: Генерация dashboard
+- `prompts/` - LLM промпты для каждого этапа
+- `modules/` - Вспомогательные модули
+  - `statformList.ts` - Получение списка статформ
+  - `sectionList.ts` - Получение списка разделов
+  - `viewList.ts` - Получение списка представлений
+  - `schemaBuilder.ts` - Построение схемы таблицы
+
+### 7. **Dashboard Service** (`src/dashboard-service/`)
+**Роль:** Генерация финального dashboard с графиками
+
+- `index.ts` - Экспорт публичного API
+- `dashboardGenerator.ts` - Главный класс генератора
+- `cellExtractor.ts` - Извлечение значений ячеек из Neo4j
+- `types.ts` - TypeScript интерфейсы
+- `chartFormatters/` - Форматтеры графиков
+  - `linearChart.ts` - Линейный график (федеральные данные)
+  - `russiaMapChart.ts` - Карта России (региональные данные)
+
+### 8. **Shared Modules** (`src/shared/`)
+**Роль:** Переиспользуемые клиенты и утилиты
+
+- `llmClient.ts` - LLM клиент (DeepSeek через AITunnel + OpenAI SDK)
+- `neo4jClient.ts` - Neo4j клиент (Singleton паттерн)
+- `logger.ts` - Система логирования с уровнями (DEBUG/INFO/WARN/ERROR)
+
+### 9. **Utilities** (`src/utils/`)
+- `dashboardGenerator.ts` - Тонкая обертка, делегирует в QueryAgent
+- `callbackSender.ts` - Отправка результатов в Backend
 
 ## 🚀 Запуск
 
@@ -348,12 +376,16 @@ docker exec ed_analytics_brama_dev cat /app/logs/llm/*.json | grep totalCost | a
 1. **Backend отправляет задачу** → `POST /api/process`
 2. **Brama добавляет в очередь** → Bull Queue
 3. **Worker берет задачу** → Начинает обработку
-4. **LLM обработка** → DeepSeek API анализирует запрос
-5. **Работа с Neo4j** → Выполнение Cypher запросов
-6. **Генерация дашборда** → DashboardGenerator
+4. **DashboardGenerator делегирует** → QueryAgent.processQuery(question)
+5. **LangGraph Workflow (4 этапа)**:
+   - **Этап 1:** Выбор СТАТФОРМЫ через LLM
+   - **Этап 2:** Выбор РАЗДЕЛА через LLM
+   - **Этап 3:** Выбор ПРЕДСТАВЛЕНИЯ и ЯЧЕЙКИ через LLM
+   - **Этап 4:** Генерация dashboard (DashboardService)
+6. **DashboardService** → Извлечение данных из Neo4j + форматирование графиков
 7. **Отправка результата** → `POST {callbackUrl}`
 8. **Backend сохраняет результат** → БД обновляется
-9. **Локальное логирование** → Сохранение в `logs/llm/`
+9. **Уведомление пользователя** → Telegram бот
 
 ## 🛠️ Разработка
 
@@ -362,33 +394,69 @@ docker exec ed_analytics_brama_dev cat /app/logs/llm/*.json | grep totalCost | a
 ```
 brama/
 ├── src/
-│   ├── server.ts                      # Основной сервер
+│   ├── server.ts                      # Основной Express сервер
+│   │
 │   ├── routes/
 │   │   └── process.ts                 # POST /api/process
+│   │
 │   ├── middleware/
 │   │   └── apiKeyAuth.ts              # Проверка API ключа
+│   │
 │   ├── services/
-│   │   ├── queueService.ts            # Bull Queue setup
-│   │   ├── llmService.ts              # DeepSeek API (через AITunnel)
-│   │   └── neo4jService.ts            # Neo4j database
+│   │   └── queueService.ts            # Bull Queue setup
+│   │
 │   ├── workers/
-│   │   └── taskProcessor.ts           # Worker обработки
+│   │   └── taskProcessor.ts           # Worker обработки задач
+│   │
+│   ├── query-agent/                   # 🤖 Анализ запроса (LangGraph)
+│   │   ├── index.ts                   # QueryAgent класс
+│   │   ├── types.ts                   # TypeScript интерфейсы
+│   │   ├── graph/
+│   │   │   ├── graph.ts               # LangGraph workflow
+│   │   │   ├── state.ts               # QueryState
+│   │   │   └── nodes/
+│   │   │       ├── selectStatformNode.ts
+│   │   │       ├── selectSectionNode.ts
+│   │   │       ├── selectViewCellsNode.ts
+│   │   │       └── generateDashboardNode.ts
+│   │   ├── prompts/                   # LLM промпты
+│   │   │   ├── statformSelection.ts
+│   │   │   ├── sectionSelection.ts
+│   │   │   └── viewCellSelection.ts
+│   │   └── modules/                   # Вспомогательные модули
+│   │       ├── statformList.ts
+│   │       ├── sectionList.ts
+│   │       ├── viewList.ts
+│   │       └── schemaBuilder.ts
+│   │
+│   ├── dashboard-service/             # 📊 Генерация dashboard
+│   │   ├── index.ts
+│   │   ├── dashboardGenerator.ts
+│   │   ├── cellExtractor.ts
+│   │   ├── types.ts
+│   │   └── chartFormatters/
+│   │       ├── linearChart.ts
+│   │       └── russiaMapChart.ts
+│   │
+│   ├── shared/                        # 🔧 Общие модули
+│   │   ├── llmClient.ts               # LLM клиент (DeepSeek)
+│   │   ├── neo4jClient.ts             # Neo4j клиент (Singleton)
+│   │   └── logger.ts                  # Система логирования
+│   │
 │   ├── utils/
-│   │   ├── dashboardGenerator.ts      # LLM генератор дашбордов
-│   │   ├── callbackSender.ts          # Отправка callbacks
-│   │   ├── llmLogger.ts               # Логирование LLM
-│   │   ├── prompts.ts                 # Промпты для Claude
-│   │   ├── regionMapper.ts            # Маппинг регионов
-│   │   ├── tableListLoader.ts         # Загрузка списков таблиц
-│   │   └── tableSchemaGenerator.ts    # Генерация схем
+│   │   ├── dashboardGenerator.ts      # Обертка над QueryAgent
+│   │   └── callbackSender.ts          # Отправка callbacks
+│   │
 │   └── types/
-│       └── index.ts                   # TypeScript типы
+│       └── index.ts                   # Общие TypeScript типы
+│
 ├── data/
-│   ├── dashboardExample.json          # Пример дашборда
-│   ├── regions.json                   # Данные регионов
-│   ├── Список_таблиц_ОО_1.csv        # Список таблиц ОО_1
-│   └── Список_таблиц_ОО_2.csv        # Список таблиц ОО_2
-├── logs/llm/                          # LLM логи (создается автоматически)
+│   ├── regions.json                   # Данные регионов России
+│   ├── Список_таблиц_ОО_1.csv        # Список таблиц статформы ОО_1
+│   └── Список_таблиц_ОО_2.csv        # Список таблиц статформы ОО_2
+│
+├── logs/llm/                          # Логи LLM запросов (авто-создается)
+│
 ├── package.json
 ├── tsconfig.json
 ├── Dockerfile
@@ -397,17 +465,32 @@ brama/
 
 ### LLM Интеграция
 
-Brama интегрирован с **DeepSeek API** (через AITunnel прокси) для обработки запросов.
+Brama построен на **LangGraph** с использованием **DeepSeek API** через AITunnel прокси.
 
-**Основные компоненты:**
+**Архитектура:**
 
-- `src/services/llmService.ts` - Сервис для работы с DeepSeek API через AITunnel
-- `src/services/neo4jService.ts` - Сервис для работы с Neo4j базой данных
-- `src/utils/dashboardGenerator.ts` - Генератор дашбордов на основе LLM
+- **LangGraph** (@langchain/langgraph) - фреймворк для построения stateful workflows
+- **QueryAgent** - главный класс, управляющий 4-этапным workflow
+- **LLMClient** (shared) - клиент для работы с DeepSeek через OpenAI SDK
+- **LangSmith** (опционально) - трассировка и мониторинг LLM вызовов
 
 **Используемая модель:** `deepseek-chat` (DeepSeek v3.2)
 
-**Логирование:** Все запросы к DeepSeek автоматически логируются в `logs/llm/` для анализа и отладки
+**Workflow обработки:**
+1. **Этап 1:** LLM выбирает статформу из списка
+2. **Этап 2:** LLM выбирает раздел
+3. **Этап 3:** LLM выбирает представление и ячейку в таблице
+4. **Этап 4:** DashboardService генерирует финальный dashboard
+
+**LangSmith трассировка:**
+- Включается через переменные окружения `LANGSMITH_*`
+- Показывает детали каждого этапа LangGraph
+- Полезно для отладки и анализа промптов
+
+**Файлы:**
+- `src/query-agent/` - LangGraph workflow (4 узла)
+- `src/shared/llmClient.ts` - LLM клиент (DeepSeek через AITunnel)
+- `src/query-agent/prompts/` - Промпты для каждого этапа
 
 ## 📈 Мониторинг
 
@@ -461,13 +544,21 @@ Brama выводит подробные логи для отладки:
 3. Очистите failed задачи через Bull Board
 4. Рассмотрите возможность кэширования частых запросов
 
+### Проблема: Ошибки в LangGraph workflow
+
+**Решение:**
+1. Проверьте логи в консоли - каждый этап логируется
+2. Включите LangSmith трассировку для детального просмотра
+3. Проверьте что все 4 узла корректно инициализированы
+4. Убедитесь что State передается между узлами
+
 ### Проблема: Ошибки при обращении к DeepSeek API
 
 **Решение:**
 1. Проверьте валидность `OPENAI_API_KEY` (AITunnel ключ)
 2. Проверьте баланс аккаунта AITunnel на https://aitunnel.ru
 3. Проверьте доступность API: https://api.aitunnel.ru/v1/
-4. Просмотрите логи в `logs/llm/` для детальной информации
+4. Проверьте уровень логирования: `LOG_LEVEL=DEBUG`
 
 ### Проблема: Ошибки подключения к Neo4j
 
@@ -476,6 +567,15 @@ Brama выводит подробные логи для отладки:
 2. Проверьте `NEO4J_URI` и `NEO4J_PASSWORD` в `.env`
 3. Проверьте логи Neo4j: `docker logs <neo4j_container>`
 4. Убедитесь что база данных восстановлена из дампа
+5. Проверьте что Neo4jClient корректно инициализирован (Singleton)
+
+### Проблема: QueryAgent не инициализирован
+
+**Решение:**
+1. Проверьте что `DashboardGenerator.initialize()` вызывается при старте
+2. Проверьте логи: должно быть сообщение "QueryAgent initialized"
+3. Убедитесь что все зависимости установлены: `npm install`
+4. Проверьте версии пакетов LangGraph: `npm list @langchain/langgraph`
 
 
 
