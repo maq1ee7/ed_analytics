@@ -65,20 +65,6 @@ export interface FederalSharesData {
 
 // Типы для данных из dashboardExample.json
 
-export interface ExponentialChartPoint {
-  x: number;
-  y: number;
-}
-
-export interface ExponentialChartYear {
-  year: number;
-  points: ExponentialChartPoint[];
-}
-
-export interface ExponentialChartData {
-  years: ExponentialChartYear[];
-}
-
 export interface FederalSharesIndexData {
   index: string;
   values: { [year: string]: number };
@@ -121,10 +107,22 @@ export interface RussiaMapChartData {
   years: RussiaMapYearData[];
 }
 
+// Линейный график (один год)
+export interface LinearChartPoint {
+  x: number;
+  y: number | null;
+}
+
+export interface LinearChartData {
+  years: Array<{
+    points: LinearChartPoint[];
+  }>;
+}
+
 export interface ChartItem {
-  type: 'exponential' | 'federal_shares' | 'radar' | 'russia_map';
+  type: 'federal_shares' | 'radar' | 'russia_map' | 'linear';
   title: string;
-  data: ExponentialChartData | FederalSharesChartData | RadarChartDataFromJSON | RussiaMapChartData;
+  data: FederalSharesChartData | RadarChartDataFromJSON | RussiaMapChartData | LinearChartData;
 }
 
 export interface DashboardData {
