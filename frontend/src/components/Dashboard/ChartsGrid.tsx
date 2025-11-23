@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import ExponentialChart from '../charts/ExponentialChart';
+import LinearChart from '../charts/LinearChart';
 import RussiaInteractiveMap from '../charts/RussiaInteractiveMap';
 import RadarChart from '../charts/RadarChart';
 import FederalSharesChart from '../charts/FederalSharesChart';
 import { 
   DashboardData, 
-  ExponentialChartData, 
+  LinearChartData, 
   FederalSharesChartData, 
   RadarChartDataFromJSON, 
   RussiaMapChartData 
@@ -74,17 +74,17 @@ const ChartsGrid: React.FC<ChartsGridProps> = ({ uid }) => {
   }
 
   // Извлекаем данные для каждого графика
-  const exponentialData = dashboardData.dashboard.charts.find(c => c.type === 'exponential')?.data as ExponentialChartData | undefined;
+  const linearData = dashboardData.dashboard.charts.find(c => c.type === 'linear')?.data as LinearChartData | undefined;
   const federalSharesData = dashboardData.dashboard.charts.find(c => c.type === 'federal_shares')?.data as FederalSharesChartData | undefined;
   const radarData = dashboardData.dashboard.charts.find(c => c.type === 'radar')?.data as RadarChartDataFromJSON | undefined;
   const mapData = dashboardData.dashboard.charts.find(c => c.type === 'russia_map')?.data as RussiaMapChartData | undefined;
 
   return (
     <div className="space-y-6">
-      {/* Первый ряд - основной график */}
-      {exponentialData && (
+      {/* Линейный график */}
+      {linearData && (
         <div className="w-full min-h-0">
-          <ExponentialChart data={exponentialData} />
+          <LinearChart data={linearData} />
         </div>
       )}
 
