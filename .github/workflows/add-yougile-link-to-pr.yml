@@ -1,0 +1,83 @@
+name: Add YouGile Link to PR Description
+
+on:
+  pull_request:
+    types: [opened, edited]
+
+jobs:
+  add-yougile-link:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    
+    steps:
+      - name: Extract ticket number
+        id: extract-ticket
+        run: |
+          # Извлекаем номер тикета из названия ветки
+          BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
+          echo "Branch name: $BRANCH_NAME"
+          
+          # Пытаемся найти IT-XXX в названии ветки
+          TICKET_ID=$(echo "$BRANCH_NAME" | grep -oE "IT-[0-9]+" | head -n 1 | tr '[:lower:]' '[:upper:]')
+          
+          if [ -z "$TICKET_ID" ]; then
+            # Если не нашли в ветке, пытаемся найти в заголовке PR
+            PR_TITLE="${{ github.event.pull_request.title }}"
+            echo "PR title: $PR_TITLE"
+            TICKET_ID=$(echo "$PR_TITLE" | grep -oE "IT-[0-9]+" | head -n 1 | tr '[:lower:]' '[:upper:]')
+          fi
+          
+          if [ -z "$TICKET_ID" ]; then
+            echo "No ticket found"
+            echo "ticket_id=" >> $GITHUB_OUTPUT
+          else
+            echo "Found ticket: $TICKET_ID"
+            echo "ticket_id=$TICKET_ID" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update PR description
+        if: steps.extract-ticket.outputs.ticket_id != ''
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const ticketId = '${{ steps.extract-ticket.outputs.ticket_id }}';
+            const ticketUrl = `https://ru.yougile.com/team/6a5451828538/%D0%B0%D0%B9%D1%82%D0%B8%D1%88%D0%B5%D1%87%D0%BA%D0%B0/%D0%92%D0%B5%D0%B1#${ticketId}`;
+            
+            // Получаем текущее описание PR
+            const { data: pullRequest } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            
+            let body = pullRequest.body || '';
+            
+            // Формируем красивую ссылку на тикет
+            const ticketLink = `📋 **Тикет:** [${ticketId}](${ticketUrl})\n\n---\n\n`;
+            
+            // Проверяем, есть ли уже ссылка на тикет в описании
+            const ticketLinkRegex = /📋 \*\*Тикет:\*\* \[IT-\d+\]/;
+            
+            if (ticketLinkRegex.test(body)) {
+              // Заменяем существующую ссылку
+              body = body.replace(
+                /📋 \*\*Тикет:\*\* \[IT-\d+\]\(https:\/\/ru\.yougile\.com[^\)]+\)\n\n---\n\n/,
+                `📋 **Тикет:** [${ticketId}](${ticketUrl})\n\n---\n\n`
+              );
+              console.log(`🔄 Updated ticket link for ${ticketId}`);
+            } else {
+              // Добавляем новую ссылку в начало
+              body = ticketLink + body;
+              console.log(`✅ Added ticket link for ${ticketId}`);
+            }
+            
+            // Обновляем описание PR
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              body: body
+            });
+
