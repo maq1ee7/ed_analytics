@@ -87,6 +87,14 @@ ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
 
 echo ""
 echo "2️⃣ Копируем backend файлы..."
+
+# Удаляем старые src и migrations папки для чистого деплоя
+ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
+    rm -rf $PROJECT_DIR/backend/src
+    rm -rf $PROJECT_DIR/backend/migrations
+    echo '🗑️  Старые backend файлы удалены'
+"
+
 scp -i "$SSH_KEY" \
     "$LOCAL_DIR/backend/package.json" \
     "$LOCAL_DIR/backend/tsconfig.json" \
@@ -103,6 +111,14 @@ echo "✅ Backend файлы и миграции скопированы"
 
 echo ""
 echo "3️⃣ Копируем frontend файлы..."
+
+# Удаляем старые src и public папки для чистого деплоя
+ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
+    rm -rf $PROJECT_DIR/frontend/src
+    rm -rf $PROJECT_DIR/frontend/public
+    echo '🗑️  Старые frontend файлы удалены'
+"
+
 scp -i "$SSH_KEY" \
     "$LOCAL_DIR/frontend/package.json" \
     "$LOCAL_DIR/frontend/tsconfig.json" \
@@ -125,6 +141,14 @@ echo "✅ Frontend файлы скопированы"
 
 echo ""
 echo "4️⃣ Копируем Brama файлы..."
+
+# Удаляем старые src и data папки для чистого деплоя
+ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
+    rm -rf $PROJECT_DIR/brama/src
+    rm -rf $PROJECT_DIR/brama/data
+    echo '🗑️  Старые brama файлы удалены'
+"
+
 scp -i "$SSH_KEY" \
     "$LOCAL_DIR/brama/package.json" \
     "$LOCAL_DIR/brama/tsconfig.json" \
@@ -142,6 +166,13 @@ echo "✅ Brama файлы скопированы"
 
 echo ""
 echo "5️⃣ Копируем Telegram Bot файлы..."
+
+# Удаляем старую src папку для чистого деплоя
+ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
+    rm -rf $PROJECT_DIR/telegram-bot/src
+    echo '🗑️  Старые telegram-bot файлы удалены'
+"
+
 scp -i "$SSH_KEY" \
     "$LOCAL_DIR/telegram-bot/package.json" \
     "$LOCAL_DIR/telegram-bot/tsconfig.json" \
