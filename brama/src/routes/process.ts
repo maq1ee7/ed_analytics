@@ -54,7 +54,7 @@ router.post('/', apiKeyAuth, async (req: Request, res: Response): Promise<void> 
     const queueService = QueueService.getInstance();
     await queueService.addTask({ taskId, question, callbackUrl });
 
-    console.log(`[API] Task ${taskId} added to queue successfully`);
+    console.log(`[API] Task ${taskId} added to queue`);
 
     // Возвращаем успешный ответ
     res.json({

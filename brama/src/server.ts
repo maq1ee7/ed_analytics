@@ -11,6 +11,7 @@ dotenv.config();
 
 // Импорт роутов и сервисов
 import processRoutes from './routes/process';
+import clarificationsRoutes from './routes/clarifications';
 import { QueueService } from './services/queueService';
 import { TaskProcessor } from './workers/taskProcessor';
 import { DashboardGenerator } from './utils/dashboardGenerator';
@@ -55,6 +56,7 @@ if (NODE_ENV === 'development') {
 
 // API Routes
 app.use('/api/process', processRoutes);
+app.use('/api/clarifications', clarificationsRoutes);
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
