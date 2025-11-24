@@ -50,6 +50,61 @@ interface TelegramQueryRequest {
   chatId: number;
 }
 
+// Получение вариантов уточнения запроса от Telegram bot
+router.post('/clarifications', telegramBotAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { question } = req.body;
+
+    // Валидация входных данных
+    if (!question || typeof question !== 'string' || question.trim().length === 0) {
+      res.status(400).json({
+        error: 'Invalid question',
+        message: 'Question is required and must be a non-empty string'
+      });
+      return;
+    }
+
+    console.log(`[Backend] Getting clarifications for: "${question}"`);
+
+    // Отправляем запрос в Brama для получения уточнений
+    const bramaUrl = process.env.BACKEND_CORE_URL || 'http://brama:5001';
+    const apiKey = process.env.BACKEND_CORE_API_KEY;
+
+    try {
+      const response = await axios.post(
+        `${bramaUrl}/api/clarifications`,
+        { question: question.trim() },
+        {
+          headers: {
+            'X-API-Key': apiKey,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000 // 30 секунд для LLM запроса
+        }
+      );
+
+      console.log(`[Backend] Got clarifications successfully`);
+
+      res.json(response.data);
+
+    } catch (bramaError) {
+      console.error('[Backend] Failed to get clarifications from Brama:', bramaError);
+
+      res.status(503).json({
+        error: 'Service unavailable',
+        message: 'Сервис уточнений временно недоступен. Попробуйте позже.'
+      });
+    }
+
+  } catch (error) {
+    console.error('Get clarifications error:', error);
+    res.status(500).json({
+      error: 'Failed to get clarifications',
+      message: 'Internal server error'
+    });
+  }
+});
+
 // Создание нового запроса от Telegram bot (без JWT auth)
 router.post('/telegram', telegramBotAuth, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -104,7 +159,7 @@ router.post('/telegram', telegramBotAuth, async (req: Request, res: Response): P
         }
       );
 
-      console.log(`[Backend] Telegram task ${savedQuery.uid} sent to Brama successfully`);
+      console.log(`[Backend] Telegram task ${savedQuery.uid} sent to Brama`);
 
       // Обновляем статус на processing
       await QueryModel.markAsProcessing(savedQuery.uid);
@@ -417,14 +472,45 @@ router.post('/callbacks/:uid', apiKeyAuth, async (req: Request, res: Response): 
         const serverIp = process.env.SERVER_IP || '130.193.46.4';
         const dashboardUrl = `http://${serverIp}/dashboard/${uid}`;
         const notificationQueue = NotificationQueueService.getInstance();
-        
+
+        // Извлекаем данные из DashboardData для расширенного сообщения
+        let chartDescription: string | undefined;
+        let yearlyData: Array<{ year: number; value: number | null }> | undefined;
+
+        try {
+          // Извлекаем описание с метаданными (статформа, раздел, строка, ячейка)
+          if (result?.dashboard?.description) {
+            chartDescription = result.dashboard.description;
+          }
+
+          // Извлекаем данные линейного графика по годам
+          if (result?.dashboard?.charts?.[0]) {
+            const linearChart = result.dashboard.charts[0];
+
+            // Проверяем, что это линейный график
+            if (linearChart.type === 'linear') {
+              // Извлекаем данные по годам
+              if (linearChart.data?.years?.[0]?.points) {
+                yearlyData = linearChart.data.years[0].points.map((point: any) => ({
+                  year: point.x,
+                  value: point.y
+                }));
+              }
+            }
+          }
+        } catch (err) {
+          console.warn(`[Backend] Failed to extract chart data for notification: ${err}`);
+        }
+
         await notificationQueue.addNotification({
           chatId: query.telegram_chat_id,
           uid,
           status: 'completed',
-          dashboardUrl
+          dashboardUrl,
+          chartDescription,
+          yearlyData
         });
-        
+
         console.log(`[Backend] Telegram notification queued for chat ${query.telegram_chat_id}`);
       }
       

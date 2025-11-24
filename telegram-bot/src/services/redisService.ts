@@ -50,17 +50,33 @@ export class RedisService {
    * Обработчик уведомлений из очереди
    */
   private async processNotification(job: Job<TelegramNotification>): Promise<void> {
-    const { chatId, uid, status, dashboardUrl, errorMessage } = job.data;
+    const { chatId, uid, status, dashboardUrl, errorMessage, chartDescription, yearlyData } = job.data;
 
     console.log(`[RedisService] Processing notification for chat ${chatId}, uid: ${uid}, status: ${status}`);
 
     try {
       if (status === 'completed' && dashboardUrl) {
-        // Отправляем ссылку на готовый дашборд
-        await this.bot.telegram.sendMessage(
-          chatId,
-          `✅ Дашборд готов!\n\n🔗 ${dashboardUrl}`
-        );
+        // Формируем расширенное сообщение с описанием графика и данными
+        let message = '✅ Дашборд готов!';
+
+        // Добавляем описание графика, если оно есть
+        if (chartDescription) {
+          message += `\n\n📊 ${chartDescription}`;
+        }
+
+        // Добавляем данные по годам, если они есть
+        if (yearlyData && yearlyData.length > 0) {
+          message += '\n\n📈 Данные:';
+          yearlyData.forEach(({ year, value }) => {
+            message += `\n• ${year}: ${value}`;
+          });
+        }
+
+        // Добавляем ссылку на дашборд
+        message += `\n\n🔗 ${dashboardUrl}`;
+
+        // Отправляем сообщение
+        await this.bot.telegram.sendMessage(chatId, message);
 
         console.log(`[RedisService] Success notification sent to chat ${chatId}`);
 
