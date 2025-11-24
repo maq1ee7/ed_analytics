@@ -9,6 +9,9 @@ export interface TelegramNotification {
   status: 'completed' | 'failed';
   dashboardUrl?: string;
   errorMessage?: string;
+  // Дополнительные данные для расширенного сообщения
+  chartDescription?: string;
+  yearlyData?: Array<{ year: number; value: number | null }>;
 }
 
 /**
