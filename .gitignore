@@ -158,3 +158,4 @@ certs/
 
 
 neo4j.dump
+frontend/package-lock.json

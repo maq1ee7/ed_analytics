@@ -49,11 +49,12 @@ export interface RussiaMapChart {
 
 /**
  * Входные данные для DashboardGenerator
- * Эти данные приходят из query-agent (будет реализован позже)
+ * Эти данные приходят из query-agent
+ * Поддерживает выбор одного или нескольких представлений для агрегации
  */
 export interface DashboardServiceInput {
   query: string;                                // Оригинальный запрос пользователя
-  viewId: number;                               // ID узла Представления в Neo4j
+  viewIds: number[];                            // Массив ID представлений (1 или более)
   colIndex: number;                             // Индекс колонки в таблице
   rowIndex: number;                             // Индекс строки в таблице
   metadata: ViewMetadata;                       // Метаданные для description
@@ -63,18 +64,9 @@ export interface DashboardServiceInput {
  * Метаданные о выбранном представлении
  */
 export interface ViewMetadata {
-  viewName: string;                             // Название представления
+  viewNames: string[];                          // Массив названий представлений
   sectionName: string;                          // Название раздела
   statformName: string;                         // Название статформы
-}
-
-/**
- * Координаты ячейки в таблице
- */
-export interface CellCoordinates {
-  viewId: number;
-  colIndex: number;
-  rowIndex: number;
 }
 
 /**

@@ -44,25 +44,26 @@ export interface SectionSelectionResult {
 }
 
 /**
- * Координаты ячейки в таблице
+ * Координаты ячейки в таблице (только row и col, без viewId)
  */
 export interface CellCoordinates {
-  viewId: number;      // ID представления
   colIndex: number;    // Индекс колонки
   rowIndex: number;    // Индекс строки
 }
 
 /**
  * Результат выбора представления и координат ячейки (Этап 3)
+ * Поддерживает выбор одного или нескольких представлений для агрегации
  */
 export interface ViewSelectionResult {
-  cell: CellCoordinates;  // Координаты ячейки
+  viewIds: number[];         // Массив ID представлений (может быть 1 или более)
+  cellCoordinates: CellCoordinates;  // Координаты ячейки (одинаковые для всех представлений)
   metadata: {
-    viewName: string;      // Название представления
-    sectionName: string;   // Название раздела
-    statformName: string;  // Название статформы
+    viewNames: string[];     // Массив названий представлений
+    sectionName: string;     // Название раздела
+    statformName: string;    // Название статформы
   };
-  reasoning?: string;      // Пояснение выбора
+  reasoning?: string;        // Пояснение выбора
 }
 
 // ============================================================================
@@ -107,7 +108,6 @@ export const SectionSelectionSchema = z.object({
  * Zod схема для координат ячейки
  */
 export const CellCoordinatesSchema = z.object({
-  viewId: z.number(),
   colIndex: z.number().min(0),
   rowIndex: z.number().min(0)
 });
@@ -116,9 +116,10 @@ export const CellCoordinatesSchema = z.object({
  * Zod схема для результата выбора представления
  */
 export const ViewSelectionSchema = z.object({
-  cell: CellCoordinatesSchema,
+  viewIds: z.array(z.number()).min(1),  // Массив ID представлений (минимум 1, без ограничения максимума)
+  cellCoordinates: CellCoordinatesSchema,
   metadata: z.object({
-    viewName: z.string(),
+    viewNames: z.array(z.string()),  // Массив названий представлений
     sectionName: z.string(),
     statformName: z.string()
   }),

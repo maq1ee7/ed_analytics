@@ -25,16 +25,16 @@ export async function generateDashboardNode(
       throw new Error('Не выбрано представление и координаты на предыдущем этапе');
     }
 
-    const { cell, metadata } = state.viewSelection;
+    const { viewIds, cellCoordinates, metadata } = state.viewSelection;
 
     // Подготовить входные данные для DashboardGenerator
     const dashboardInput = {
       query: state.query,
-      viewId: cell.viewId,
-      colIndex: cell.colIndex,
-      rowIndex: cell.rowIndex,
+      viewIds: viewIds,
+      colIndex: cellCoordinates.colIndex,
+      rowIndex: cellCoordinates.rowIndex,
       metadata: {
-        viewName: metadata.viewName,
+        viewNames: metadata.viewNames,
         sectionName: metadata.sectionName,
         statformName: metadata.statformName
       }
@@ -42,7 +42,7 @@ export async function generateDashboardNode(
 
     logger.debug(
       `Вызов DashboardGenerator с параметрами: ` +
-      `viewId=${cell.viewId}, row=${cell.rowIndex}, col=${cell.colIndex}`
+      `viewIds=[${viewIds.join(', ')}], row=${cellCoordinates.rowIndex}, col=${cellCoordinates.colIndex}`
     );
 
     // Создать экземпляр генератора и получить dashboard

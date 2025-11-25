@@ -17,5 +17,4 @@ export type {
   RussiaMapChart,
   DashboardServiceInput,
   ViewMetadata,
-  CellCoordinates,
 } from './types.js';

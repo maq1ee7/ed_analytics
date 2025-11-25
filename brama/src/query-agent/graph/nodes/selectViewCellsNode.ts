@@ -75,8 +75,9 @@ export async function selectViewCellsNode(
     );
 
     logger.info(
-      `Выбрана ячейка: viewId=${result.cell.viewId}, ` +
-      `row=${result.cell.rowIndex}, col=${result.cell.colIndex}` +
+      `Выбрано представлений: ${result.viewIds.length}, ` +
+      `viewIds=[${result.viewIds.join(', ')}], ` +
+      `координаты: row=${result.cellCoordinates.rowIndex}, col=${result.cellCoordinates.colIndex}` +
       (result.reasoning ? ` | ${result.reasoning}` : '')
     );
 
