@@ -58,6 +58,10 @@ export interface CellCoordinates {
 export interface ViewSelectionResult {
   viewIds: number[];         // Массив ID представлений (может быть 1 или более)
   cellCoordinates: CellCoordinates;  // Координаты ячейки (одинаковые для всех представлений)
+
+  // ВРЕМЕННО: для объединения похожих ячеек (TODO: удалить после исправления схем)
+  similarCellCoordinate?: CellCoordinates;  // Одна дополнительная похожая ячейка
+
   metadata: {
     viewNames: string[];     // Массив названий представлений
     sectionName: string;     // Название раздела
@@ -118,6 +122,10 @@ export const CellCoordinatesSchema = z.object({
 export const ViewSelectionSchema = z.object({
   viewIds: z.array(z.number()).min(1),  // Массив ID представлений (минимум 1, без ограничения максимума)
   cellCoordinates: CellCoordinatesSchema,
+
+  // ВРЕМЕННО: опциональное поле для одной похожей координаты
+  similarCellCoordinate: CellCoordinatesSchema.optional(),
+
   metadata: z.object({
     viewNames: z.array(z.string()),  // Массив названий представлений
     sectionName: z.string(),

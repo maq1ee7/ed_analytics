@@ -25,7 +25,7 @@ export async function generateDashboardNode(
       throw new Error('Не выбрано представление и координаты на предыдущем этапе');
     }
 
-    const { viewIds, cellCoordinates, metadata } = state.viewSelection;
+    const { viewIds, cellCoordinates, metadata, similarCellCoordinate } = state.viewSelection;
 
     // Подготовить входные данные для DashboardGenerator
     const dashboardInput = {
@@ -33,6 +33,10 @@ export async function generateDashboardNode(
       viewIds: viewIds,
       colIndex: cellCoordinates.colIndex,
       rowIndex: cellCoordinates.rowIndex,
+
+      // ВРЕМЕННО: передаем похожую координату (если есть)
+      similarCellCoordinate: similarCellCoordinate,
+
       metadata: {
         viewNames: metadata.viewNames,
         sectionName: metadata.sectionName,

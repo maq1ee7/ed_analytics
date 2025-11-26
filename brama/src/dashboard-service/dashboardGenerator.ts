@@ -75,7 +75,8 @@ export class DashboardGenerator {
       federalData,
       input.colIndex,
       input.rowIndex,
-      years
+      years,
+      input.similarCellCoordinate  // ВРЕМЕННО: передаем похожую координату
     );
 
     // Форматирование Linear Chart
@@ -88,7 +89,8 @@ export class DashboardGenerator {
       regionalData,
       input.colIndex,
       input.rowIndex,
-      years
+      years,
+      input.similarCellCoordinate  // ВРЕМЕННО: передаем похожую координату
     );
 
     // Форматирование Russia Map Chart
@@ -138,7 +140,8 @@ export class DashboardGenerator {
         federalData,
         input.colIndex,
         input.rowIndex,
-        commonYears
+        commonYears,
+        input.similarCellCoordinate  // ВРЕМЕННО: передаем похожую координату
       );
       console.log(`✅ ViewId ${viewId} (${idx + 1}/${input.viewIds.length}): федеральные данные извлечены`);
       return extracted;
@@ -162,7 +165,8 @@ export class DashboardGenerator {
         regionalData,
         input.colIndex,
         input.rowIndex,
-        commonYears
+        commonYears,
+        input.similarCellCoordinate  // ВРЕМЕННО: передаем похожую координату
       );
       console.log(`✅ ViewId ${viewId} (${idx + 1}/${input.viewIds.length}): региональные данные извлечены`);
       return extracted;
