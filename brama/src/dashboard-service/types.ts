@@ -57,6 +57,10 @@ export interface DashboardServiceInput {
   viewIds: number[];                            // Массив ID представлений (1 или более)
   colIndex: number;                             // Индекс колонки в таблице
   rowIndex: number;                             // Индекс строки в таблице
+
+  // ВРЕМЕННО: для объединения с одной похожей ячейкой (TODO: удалить)
+  similarCellCoordinate?: { colIndex: number; rowIndex: number };
+
   metadata: ViewMetadata;                       // Метаданные для description
 }
 

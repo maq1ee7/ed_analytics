@@ -13,19 +13,28 @@ import {
 export class CellExtractor {
   /**
    * Извлечь федеральные данные из свойств view.data_YYYY
+   * ВРЕМЕННО: поддерживает объединение с одной похожей ячейкой
    * @param federalData - Объект с данными по годам из Neo4j
    * @param colIndex - Индекс колонки
    * @param rowIndex - Индекс строки
    * @param years - Массив годов для обработки
+   * @param similarCoordinate - ВРЕМЕННО: координаты похожей ячейки для объединения
    * @returns Извлечённые федеральные данные
    */
   extractFederalData(
     federalData: Record<string, any[][]>,
     colIndex: number,
     rowIndex: number,
-    years: number[]
+    years: number[],
+    similarCoordinate?: { colIndex: number; rowIndex: number }  // ВРЕМЕННО
   ): ExtractedFederalData {
     const dataByYear = new Map<number, CellValue>();
+
+    // ВРЕМЕННО: логирование объединения
+    if (similarCoordinate) {
+      console.log(`🔄 Объединение данных из 2 координат: ` +
+        `[${rowIndex},${colIndex}] + [${similarCoordinate.rowIndex},${similarCoordinate.colIndex}]`);
+    }
 
     console.log(`\n📋 Структура федеральных данных:`);
     for (const year of years) {
@@ -44,55 +53,35 @@ export class CellExtractor {
       const dataProperty = `data_${year}`;
       const yearData = federalData[dataProperty];
 
-      // Проверка существования данных за год
-      if (!yearData || !Array.isArray(yearData)) {
-        console.warn(`⚠️  Федеральные данные за ${year} год отсутствуют`);
-        dataByYear.set(year, { value: null, isNull: true });
-        continue;
+      // Извлекаем из основной координаты
+      const mainValue = this.extractSingleValue(yearData, colIndex, rowIndex, year);
+
+      // ВРЕМЕННО: извлекаем из похожей координаты (если есть)
+      const similarValue = similarCoordinate
+        ? this.extractSingleValue(yearData, similarCoordinate.colIndex, similarCoordinate.rowIndex, year)
+        : null;
+
+      // ВРЕМЕННО: логика объединения
+      let finalValue: number | null = null;
+
+      if (mainValue !== null && similarValue !== null) {
+        // КОНФЛИКТ: оба значения не null
+        console.warn(`⚠️ Конфликт данных за ${year}: основная=${mainValue}, похожая=${similarValue} → null`);
+        finalValue = null;
+      } else if (mainValue !== null) {
+        finalValue = mainValue;
+      } else if (similarValue !== null) {
+        finalValue = similarValue;
+        console.log(`✅ ${year}: взято значение из похожей ячейки: ${similarValue}`);
       }
-
-      // Проверка границ rowIndex
-      if (rowIndex < 0 || rowIndex >= yearData.length) {
-        console.warn(
-          `⚠️  rowIndex ${rowIndex} выходит за границы данных (${yearData.length} строк) за ${year} год`
-        );
-        dataByYear.set(year, { value: null, isNull: true });
-        continue;
-      }
-
-      const row = yearData[rowIndex];
-
-      // Проверка что строка является массивом
-      if (!Array.isArray(row)) {
-        console.warn(`⚠️  Строка ${rowIndex} не является массивом за ${year} год`);
-        dataByYear.set(year, { value: null, isNull: true });
-        continue;
-      }
-
-      // Проверка границ colIndex
-      if (colIndex < 0 || colIndex >= row.length) {
-        console.warn(
-          `⚠️  colIndex ${colIndex} выходит за границы строки (${row.length} колонок) за ${year} год`
-        );
-        dataByYear.set(year, { value: null, isNull: true });
-        continue;
-      }
-
-      // Извлечение и парсинг значения
-      const rawValue = row[colIndex];
-      console.log(`🔍 Федеральные ${year}: row[${rowIndex}][${colIndex}] = ${JSON.stringify(rawValue)} (тип: ${typeof rawValue})`);
-
-      const parsedValue = this.parseValue(rawValue);
 
       dataByYear.set(year, {
-        value: parsedValue,
-        isNull: parsedValue === null,
+        value: finalValue,
+        isNull: finalValue === null,
       });
 
-      if (parsedValue !== null) {
-        console.log(`✅ Федеральные данные за ${year}: ${parsedValue}`);
-      } else {
-        console.warn(`⚠️  Не удалось распарсить значение за ${year}: ${JSON.stringify(rawValue)}`);
+      if (finalValue !== null) {
+        console.log(`✅ Федеральные данные за ${year}: ${finalValue}`);
       }
     }
 
@@ -100,18 +89,64 @@ export class CellExtractor {
   }
 
   /**
+   * ВРЕМЕННО: Вспомогательный метод для извлечения значения из одной ячейки
+   * @param yearData - Данные за год
+   * @param colIndex - Индекс колонки
+   * @param rowIndex - Индекс строки
+   * @param year - Год (для логирования)
+   * @returns Числовое значение или null
+   */
+  private extractSingleValue(
+    yearData: any[][],
+    colIndex: number,
+    rowIndex: number,
+    year?: number
+  ): number | null {
+    // Проверка существования данных за год
+    if (!yearData || !Array.isArray(yearData)) {
+      return null;
+    }
+
+    // Проверка границ rowIndex
+    if (rowIndex < 0 || rowIndex >= yearData.length) {
+      return null;
+    }
+
+    const row = yearData[rowIndex];
+
+    // Проверка что строка является массивом
+    if (!Array.isArray(row)) {
+      return null;
+    }
+
+    // Проверка границ colIndex
+    if (colIndex < 0 || colIndex >= row.length) {
+      return null;
+    }
+
+    // Извлечение и парсинг значения
+    const rawValue = row[colIndex];
+    const parsedValue = this.parseValue(rawValue);
+
+    return parsedValue;
+  }
+
+  /**
    * Извлечь региональные данные из связей view-region
+   * ВРЕМЕННО: поддерживает объединение с одной похожей ячейкой
    * @param regionalDataRows - Массив региональных данных из Neo4j
    * @param colIndex - Индекс колонки
    * @param rowIndex - Индекс строки
    * @param years - Массив годов для обработки
+   * @param similarCoordinate - ВРЕМЕННО: координаты похожей ячейки для объединения
    * @returns Извлечённые региональные данные
    */
   extractRegionalData(
     regionalDataRows: RegionDataRow[],
     colIndex: number,
     rowIndex: number,
-    years: number[]
+    years: number[],
+    similarCoordinate?: { colIndex: number; rowIndex: number }  // ВРЕМЕННО
   ): ExtractedRegionalData {
     const regionsByYear = new Map<number, RegionValue[]>();
     const allRegionCodes = new Set<string>();
@@ -145,31 +180,30 @@ export class CellExtractor {
         const dataProperty = `data_${year}`;
         const yearData = region[dataProperty];
 
-        let value: number | null = null;
+        // Извлекаем из основной координаты
+        const mainValue = this.extractSingleValue(yearData, colIndex, rowIndex);
 
-        // Проверка существования данных за год
-        if (Array.isArray(yearData)) {
-          // Проверка границ rowIndex
-          if (rowIndex >= 0 && rowIndex < yearData.length) {
-            const row = yearData[rowIndex];
+        // ВРЕМЕННО: извлекаем из похожей координаты (если есть)
+        const similarValue = similarCoordinate
+          ? this.extractSingleValue(yearData, similarCoordinate.colIndex, similarCoordinate.rowIndex)
+          : null;
 
-            // Проверка что строка является массивом и границ colIndex
-            if (Array.isArray(row) && colIndex >= 0 && colIndex < row.length) {
-              const rawValue = row[colIndex];
-              value = this.parseValue(rawValue);
+        // ВРЕМЕННО: логика объединения
+        let finalValue: number | null = null;
 
-              // Логируем только первый регион для каждого года
-              if (region.regionCode === regionalDataRows[0]?.regionCode) {
-                console.log(`🔍 Регион ${region.regionCode} (${year}): row[${rowIndex}][${colIndex}] = ${JSON.stringify(rawValue)} (тип: ${typeof rawValue})`);
-              }
-            }
-          }
+        if (mainValue !== null && similarValue !== null) {
+          // КОНФЛИКТ: оба значения не null → устанавливаем null
+          finalValue = null;
+        } else if (mainValue !== null) {
+          finalValue = mainValue;
+        } else if (similarValue !== null) {
+          finalValue = similarValue;
         }
 
         // Добавление регионального значения
         regionsByYear.get(year)!.push({
           regionCode: region.regionCode,
-          value,
+          value: finalValue,
           regionName: region.regionName,
         });
       }
