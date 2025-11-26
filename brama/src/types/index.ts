@@ -12,8 +12,19 @@ export interface ProcessTask {
 // Результат обработки
 export interface ProcessResult {
   status: 'completed' | 'failed';
-  result?: DashboardData;
+  result?: {
+    dashboard: DashboardData;
+    webSearchResult?: WebSearchResult;
+  };
   error?: string;
+}
+
+// Результат веб-поиска через Perplexity API
+export interface WebSearchResult {
+  searchMode: 'fast' | 'deep';
+  content: string;
+  sources?: string[];
+  query: string;
 }
 
 // Типы для Dashboard (копия из основного backend)

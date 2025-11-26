@@ -135,6 +135,53 @@ export const ViewSelectionSchema = z.object({
 });
 
 // ============================================================================
+// Веб-поиск через Perplexity API
+// ============================================================================
+
+/**
+ * Режим веб-поиска
+ */
+export type SearchMode = 'fast' | 'deep';
+
+/**
+ * Решение о веб-поиске (выбирается LLM на основе данных из Neo4j)
+ */
+export interface WebSearchDecision {
+  searchMode: SearchMode;    // Режим поиска: fast или deep
+  searchQuery: string;        // Поисковый запрос для Perplexity API
+  reasoning?: string;         // Пояснение выбора режима
+}
+
+/**
+ * Результат веб-поиска через Perplexity API
+ */
+export interface WebSearchResult {
+  searchMode: SearchMode;     // Режим поиска, который был использован
+  content: string;            // Текст ответа от Perplexity
+  sources?: string[];         // Источники информации (если есть)
+  query: string;              // Запрос, который был отправлен в Perplexity
+}
+
+/**
+ * Zod схема для решения о веб-поиске
+ */
+export const WebSearchDecisionSchema = z.object({
+  searchMode: z.enum(['fast', 'deep']),
+  searchQuery: z.string().min(5).max(500),
+  reasoning: z.string().optional()
+});
+
+/**
+ * Zod схема для результата веб-поиска
+ */
+export const WebSearchResultSchema = z.object({
+  searchMode: z.enum(['fast', 'deep']),
+  content: z.string(),
+  sources: z.array(z.string()).optional(),
+  query: z.string()
+});
+
+// ============================================================================
 // State для LangGraph
 // ============================================================================
 
@@ -152,6 +199,9 @@ export interface AgentState {
   statformSelection?: StatformSelectionResult;
   sectionSelection?: SectionSelectionResult;
   viewSelection?: ViewSelectionResult;
+
+  // Результат веб-поиска (новый этап)
+  webSearch?: WebSearchResult;
 
   // Финальный результат
   dashboardData?: any;  // DashboardData из dashboard-service

@@ -14,6 +14,16 @@ export interface TelegramNotification {
   yearlyData?: Array<{ year: number; value: number | null }>;
 }
 
+// Интерфейс уведомления о веб-поиске из Bull queue
+export interface WebSearchNotification {
+  chatId: number;
+  uid: string;
+  searchMode: 'fast' | 'deep';
+  content: string;
+  sources?: string[];
+  query: string;
+}
+
 // Ответ от Backend API при создании запроса
 export interface BackendQueryResponse {
   uid: string;

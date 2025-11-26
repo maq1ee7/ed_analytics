@@ -1,5 +1,5 @@
 import { DashboardData } from '../types';
-import { QueryAgent, ClarificationResult } from '../query-agent';
+import { QueryAgent, ClarificationResult, QueryProcessResult } from '../query-agent';
 
 /**
  * Генератор дашбордов с интеграцией LLM и Neo4j
@@ -54,6 +54,17 @@ export class DashboardGenerator {
    * @returns DashboardData
    */
   static async generateDashboard(question: string): Promise<DashboardData> {
+    const result = await this.generateDashboardWithWebSearch(question);
+    return result.dashboard;
+  }
+
+  /**
+   * Генерирует ответ на вопрос пользователя с результатами веб-поиска
+   *
+   * @param question - вопрос пользователя (может быть уточненным через выбор варианта)
+   * @returns QueryProcessResult - dashboard и результат веб-поиска
+   */
+  static async generateDashboardWithWebSearch(question: string): Promise<QueryProcessResult> {
     console.log(`[DashboardGenerator] Генерация dashboard для запроса: "${question}"`);
 
     // Инициализируем сервисы если еще не инициализированы
@@ -66,12 +77,17 @@ export class DashboardGenerator {
       // 1. Выбор статформ через LLM
       // 2. Выбор раздела через LLM
       // 3. Выбор представления и координат ячейки через LLM
-      // 4. Генерация dashboard через DashboardService
+      // 4. Веб-поиск через Perplexity API (новый этап)
+      // 5. Генерация dashboard через DashboardService
       console.log('[DashboardGenerator] Запуск обработки запроса через QueryAgent...');
-      const dashboard = await this.queryAgent!.processQuery(question);
+      const result = await this.queryAgent!.processQueryWithWebSearch(question);
 
       console.log('[DashboardGenerator] ✅ Dashboard успешно сгенерирован');
-      return dashboard;
+      if (result.webSearchResult) {
+        console.log(`[DashboardGenerator] ✅ Веб-поиск выполнен (режим: ${result.webSearchResult.searchMode})`);
+      }
+
+      return result;
 
     } catch (error) {
       console.error('[DashboardGenerator] ❌ Ошибка генерации dashboard:', error);
