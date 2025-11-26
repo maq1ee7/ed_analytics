@@ -8,9 +8,18 @@ import { Neo4jClient } from '../shared/neo4jClient.js';
 import { Logger } from '../shared/logger.js';
 import { buildQueryGraph, buildClarificationGraph } from './graph/graph.js';
 import type { DashboardData } from '../dashboard-service/types.js';
-import type { ClarificationResult } from './types.js';
+import type { ClarificationResult, WebSearchResult } from './types.js';
 
 const logger = Logger.withPrefix('QueryAgent');
+
+/**
+ * Расширенный результат обработки запроса
+ * Включает dashboard и опциональный результат веб-поиска
+ */
+export interface QueryProcessResult {
+  dashboard: DashboardData;
+  webSearchResult?: WebSearchResult;
+}
 
 /**
  * Query Agent - обработчик запросов пользователей через LangGraph
@@ -42,6 +51,17 @@ export class QueryAgent {
    * @throws Error с сообщением на русском языке при ошибках
    */
   async processQuery(question: string): Promise<DashboardData> {
+    const result = await this.processQueryWithWebSearch(question);
+    return result.dashboard;
+  }
+
+  /**
+   * Обработать запрос пользователя и вернуть DashboardData + результат веб-поиска
+   * @param question - текстовый запрос пользователя (может быть уточненным)
+   * @returns Promise<QueryProcessResult> - dashboard и опциональный webSearchResult
+   * @throws Error с сообщением на русском языке при ошибках
+   */
+  async processQueryWithWebSearch(question: string): Promise<QueryProcessResult> {
     logger.info(`Начало обработки запроса: "${question}"`);
 
     try {
@@ -67,7 +87,12 @@ export class QueryAgent {
       }
 
       logger.info('Запрос успешно обработан');
-      return finalState.dashboardData as DashboardData;
+
+      // Вернуть dashboard и результат веб-поиска (если есть)
+      return {
+        dashboard: finalState.dashboardData as DashboardData,
+        webSearchResult: finalState.webSearch
+      };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Неизвестная ошибка';
       logger.error(`Ошибка при обработке запроса: ${message}`);
@@ -140,5 +165,6 @@ export type {
   StatformSelectionResult,
   SectionSelectionResult,
   ViewSelectionResult,
-  CellCoordinates
+  CellCoordinates,
+  WebSearchResult
 } from './types.js';

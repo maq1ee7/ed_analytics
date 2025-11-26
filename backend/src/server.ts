@@ -12,6 +12,7 @@ import authRoutes from './routes/auth';
 import queryRoutes from './routes/queries';
 import { authenticateToken } from './middleware/auth';
 import { runMigrations } from './utils/migrations';
+import { WebSearchQueueService } from './services/webSearchQueue';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '5000', 10);
@@ -87,10 +88,14 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 const startServer = async (): Promise<void> => {
   try {
     console.log('🏁 Starting ED Analytics Backend...');
-    
+
     // Сначала выполняем миграции
     await runMigrations();
-    
+
+    // Инициализируем Web Search Queue
+    WebSearchQueueService.getInstance();
+    console.log('✅ Web Search Queue initialized');
+
     // Потом запускаем сервер
     app.listen(PORT, '0.0.0.0', () => {
       console.log('');
@@ -101,7 +106,7 @@ const startServer = async (): Promise<void> => {
       console.log(`✅ CORS allowed origins: http://${SERVER_IP}, http://localhost:3000`);
       console.log('');
     });
-    
+
   } catch (error) {
     console.error('💥 Failed to start server:', error);
     process.exit(1); // Завершаем процесс если миграции упали

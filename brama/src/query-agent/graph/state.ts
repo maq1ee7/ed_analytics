@@ -7,7 +7,8 @@ import {
   ClarificationResult,
   StatformSelectionResult,
   SectionSelectionResult,
-  ViewSelectionResult
+  ViewSelectionResult,
+  WebSearchResult
 } from '../types.js';
 
 /**
@@ -42,6 +43,12 @@ export const AgentState = Annotation.Root({
 
   // Результат этапа 3: выбор представления и координат ячейки
   viewSelection: Annotation<ViewSelectionResult | undefined>({
+    reducer: (_, value) => value,
+    default: () => undefined
+  }),
+
+  // Результат этапа 4: веб-поиск через Perplexity API
+  webSearch: Annotation<WebSearchResult | undefined>({
     reducer: (_, value) => value,
     default: () => undefined
   }),

@@ -3,6 +3,7 @@ import { Update } from 'telegraf/typings/core/types/typegram';
 import { TELEGRAM_BOT_TOKEN, ALLOWED_USERNAMES, QUERY_TIMEOUT_MS } from './config';
 import { ApiService } from './services/apiService';
 import { RedisService } from './services/redisService';
+import { WebSearchService } from './services/webSearchService';
 import { UserSession, ClarificationSuggestion } from './types';
 
 /**
@@ -11,6 +12,7 @@ import { UserSession, ClarificationSuggestion } from './types';
 class TelegramBot {
   private bot: Telegraf<Context<Update>>;
   private redisService: RedisService;
+  private webSearchService: WebSearchService;
   private activeSessions: Map<number, UserSession> = new Map();
 
   constructor() {
@@ -22,6 +24,9 @@ class TelegramBot {
     // Инициализируем Redis сервис для получения уведомлений
     // Передаем callback для очистки сессий и отмены таймеров
     this.redisService = new RedisService(this.bot, this.handleQueryCompletion.bind(this));
+
+    // Инициализируем WebSearch сервис для получения результатов веб-поиска
+    this.webSearchService = new WebSearchService(this.bot);
 
     // Регистрируем обработчики
     this.setupHandlers();
@@ -350,6 +355,9 @@ class TelegramBot {
 
       // Закрываем Redis соединение
       await this.redisService.close();
+
+      // Закрываем WebSearch соединение
+      await this.webSearchService.close();
 
       console.log('[TelegramBot] Bot stopped successfully');
       process.exit(0);

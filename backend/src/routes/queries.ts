@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import { QueryModel } from '../models/Query';
 import { NotificationQueueService } from '../services/notificationQueue';
+import { WebSearchQueueService } from '../services/webSearchQueue';
 import axios from 'axios';
 
 const router = Router();
@@ -512,8 +513,24 @@ router.post('/callbacks/:uid', apiKeyAuth, async (req: Request, res: Response): 
         });
 
         console.log(`[Backend] Telegram notification queued for chat ${query.telegram_chat_id}`);
+
+        // Send web search notification if available
+        if (result?.webSearchResult) {
+          const webSearchQueue = WebSearchQueueService.getInstance();
+
+          await webSearchQueue.addNotification({
+            chatId: query.telegram_chat_id,
+            uid,
+            searchMode: result.webSearchResult.searchMode,
+            content: result.webSearchResult.content,
+            sources: result.webSearchResult.sources,
+            query: result.webSearchResult.query
+          });
+
+          console.log(`[Backend] Web search notification queued for chat ${query.telegram_chat_id}`);
+        }
       }
-      
+
       res.json({ success: true, message: 'Result saved successfully' });
       
     } else if (status === 'failed' && error) {

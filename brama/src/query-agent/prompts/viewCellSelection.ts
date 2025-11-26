@@ -2,6 +2,7 @@
  * Промпт для выбора представления и координат ячейки в таблице
  */
 
+import { stat } from 'fs';
 import { TableSchema } from '../modules/schemaBuilder.js';
 
 /**
