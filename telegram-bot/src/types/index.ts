@@ -58,8 +58,9 @@ export interface ClarificationSuggestion {
 
 // Результат уточнения запроса от API
 export interface ClarificationResult {
-  suggestions: ClarificationSuggestion[];
+  suggestions: ClarificationSuggestion[];  // 0-7 вариантов
   reasoning?: string;
+  warning?: string;  // Предупреждение (например, о региональных данных)
 }
 
 // Ответ от API уточнений

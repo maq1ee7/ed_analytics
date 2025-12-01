@@ -102,8 +102,59 @@ class TelegramBot {
           const clarificationResponse = await ApiService.getClarifications(messageText);
           const suggestions = clarificationResponse.clarifications.suggestions;
 
+          // Проверка на 0 вариантов
+          if (suggestions.length === 0) {
+            console.log(`[TelegramBot] LLM вернул 0 вариантов для "${messageText}" — пропускаем уточнение`);
+
+            // Показываем сообщение пользователю
+            await ctx.reply('✅ Перехожу к поиску...');
+
+            // Показываем warning если есть
+            if (clarificationResponse.clarifications.warning) {
+              await ctx.reply(`⚠️ ${clarificationResponse.clarifications.warning}`);
+            }
+
+            // Сразу отправляем запрос на генерацию дашборда (БЕЗ уточнения)
+            try {
+              const response = await ApiService.submitQuery(messageText, chatId);
+
+              // Сохраняем активный запрос
+              this.activeSessions.set(chatId, {
+                chatId,
+                username,
+                activeQueryUid: response.uid,
+                queryStartTime: Date.now()
+              });
+
+              await ctx.reply(
+                `✅ Запрос принят!\n` +
+                `🔍 Анализирую данные...\n\n` +
+                `Уведомление о результатах придет автоматически.`,
+                { parse_mode: 'Markdown' }
+              );
+
+            } catch (submitError) {
+              console.error('[TelegramBot] Error submitting query:', submitError);
+              const errorMsg = submitError instanceof Error ? submitError.message : 'Ошибка при отправке запроса';
+              await ctx.reply(`❌ ${errorMsg}`);
+            }
+
+            return; // ВАЖНО: выходим из обработчика
+          }
+
           // Формируем сообщение с вариантами
-          let message = '🤔 Выберите интересующие данные (можно несколько):\n\n';
+          let message = '🤔 Выберите интересующие данные:\n\n';
+
+          // НОВОЕ: инструкция для новичков
+          message += '💡 *Если вы не читали инструкцию:* выбирайте только ОДИН вариант.\n';
+          message += 'Возможность выбрать несколько — для квалифированных пользователей.\n\n';
+
+          // НОВОЕ: общий warning если есть
+          if (clarificationResponse.clarifications.warning) {
+            message += `⚠️ ${clarificationResponse.clarifications.warning}\n\n`;
+          }
+
+          // Варианты
           suggestions.forEach((s: ClarificationSuggestion) => {
             message += `• *${s.label}*\n`;
             message += `  ${s.description}\n\n`;

@@ -22,8 +22,9 @@ export interface ClarificationSuggestion {
  * Результат уточнения запроса (Этап 0)
  */
 export interface ClarificationResult {
-  suggestions: ClarificationSuggestion[];  // 4-7 вариантов уточнения (в зависимости от неопределенности)
+  suggestions: ClarificationSuggestion[];  // 0-7 вариантов уточнения (в зависимости от неопределенности)
   reasoning?: string;                       // Пояснение (опционально)
+  warning?: string;                         // Предупреждение (например, о региональных данных или несуществующих показателях)
 }
 
 /**
@@ -80,15 +81,16 @@ export interface ViewSelectionResult {
 export const ClarificationSuggestionSchema = z.object({
   id: z.number().min(1).max(7),
   label: z.string().max(15),
-  description: z.string().min(30).max(80)
+  description: z.string().max(200)  // Убрано ограничение min(30), увеличен максимум
 });
 
 /**
  * Zod схема для результата уточнения запроса
  */
 export const ClarificationResultSchema = z.object({
-  suggestions: z.array(ClarificationSuggestionSchema).min(4).max(7),
-  reasoning: z.string().optional()
+  suggestions: z.array(ClarificationSuggestionSchema).min(0).max(7),  // Изменено: min(0) вместо min(4)
+  reasoning: z.string().optional(),
+  warning: z.string().optional()  // Добавлено: поле для предупреждений
 });
 
 /**

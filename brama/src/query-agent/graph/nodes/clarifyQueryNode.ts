@@ -65,15 +65,30 @@ export async function clarifyQueryNode(
       0.7 // Более высокая температура для разнообразия вариантов
     );
 
-    logger.info(
-      `Сгенерировано ${result.suggestions.length} вариантов уточнения` +
-      (result.reasoning ? ` | ${result.reasoning}` : '')
-    );
+    // Логирование в зависимости от количества вариантов
+    if (result.suggestions.length === 0) {
+      logger.info(
+        'LLM вернул 0 вариантов — запрос однозначен, уточнение не требуется' +
+        (result.reasoning ? ` | ${result.reasoning}` : '')
+      );
+    } else {
+      logger.info(
+        `Сгенерировано ${result.suggestions.length} вариантов уточнения` +
+        (result.reasoning ? ` | ${result.reasoning}` : '')
+      );
+    }
 
-    // Логируем варианты
-    result.suggestions.forEach((s, i) => {
-      logger.debug(`Вариант ${i + 1}: ${s.label} — ${s.description}`);
-    });
+    // Логируем warning если есть
+    if (result.warning) {
+      logger.warn(`⚠️ Warning: ${result.warning}`);
+    }
+
+    // Логируем варианты (только если они есть)
+    if (result.suggestions.length > 0) {
+      result.suggestions.forEach((s, i) => {
+        logger.debug(`Вариант ${i + 1}: ${s.label} — ${s.description}`);
+      });
+    }
 
     // 5. Вернуть обновленное состояние
     return {
