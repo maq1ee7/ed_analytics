@@ -50,6 +50,8 @@ export interface SectionSelectionResult {
 export interface CellCoordinates {
   colIndex: number;    // Индекс колонки
   rowIndex: number;    // Индекс строки
+  columnName?: string; // Название колонки (из заголовка таблицы)
+  rowName?: string;    // Название строки (из схемы таблицы)
 }
 
 /**
@@ -115,7 +117,9 @@ export const SectionSelectionSchema = z.object({
  */
 export const CellCoordinatesSchema = z.object({
   colIndex: z.number().min(0),
-  rowIndex: z.number().min(0)
+  rowIndex: z.number().min(0),
+  columnName: z.string().optional(),
+  rowName: z.string().optional()
 });
 
 /**

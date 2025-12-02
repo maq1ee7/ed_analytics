@@ -74,16 +74,29 @@ export async function selectViewCellsNode(
       0.3 // Низкая температура для более детерминированного выбора
     );
 
+    // 6. Обогатить координаты названиями из схемы таблицы
+    const enrichedResult: ViewSelectionResult = {
+      ...result,
+      cellCoordinates: {
+        ...result.cellCoordinates,
+        columnName: schema.headers[result.cellCoordinates.colIndex] || undefined,
+        rowName: schema.rowNames[result.cellCoordinates.rowIndex - 1] || undefined
+      }
+    };
+
     logger.info(
-      `Выбрано представлений: ${result.viewIds.length}, ` +
-      `viewIds=[${result.viewIds.join(', ')}], ` +
-      `координаты: row=${result.cellCoordinates.rowIndex}, col=${result.cellCoordinates.colIndex}` +
-      (result.reasoning ? ` | ${result.reasoning}` : '')
+      `Выбрано представлений: ${enrichedResult.viewIds.length}, ` +
+      `viewIds=[${enrichedResult.viewIds.join(', ')}], ` +
+      `координаты: row=${enrichedResult.cellCoordinates.rowIndex}, col=${enrichedResult.cellCoordinates.colIndex}` +
+      (enrichedResult.cellCoordinates.columnName || enrichedResult.cellCoordinates.rowName
+        ? ` ("${enrichedResult.cellCoordinates.columnName}", "${enrichedResult.cellCoordinates.rowName}")`
+        : '') +
+      (enrichedResult.reasoning ? ` | ${enrichedResult.reasoning}` : '')
     );
 
-    // 6. Вернуть обновленное состояние
+    // 7. Вернуть обновленное состояние с обогащенными данными
     return {
-      viewSelection: result
+      viewSelection: enrichedResult
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Неизвестная ошибка';

@@ -9,6 +9,7 @@ import { Neo4jClient } from '../../../shared/neo4jClient.js';
 import { PerplexityClient } from '../../../shared/perplexityClient.js';
 import { Logger } from '../../../shared/logger.js';
 import { buildWebSearchDecisionPrompt } from '../../prompts/webSearchDecision.js';
+import { PERPLEXITY_QUERY_TEMPLATE } from '../../prompts/perplexityPromptTemplates.js';
 import {
   WebSearchDecisionSchema,
   WebSearchDecision,
@@ -59,20 +60,25 @@ export async function perplexityWebSearchNode(
       logger.debug(`Обоснование: ${decision.reasoning}`);
     }
 
-    // Шаг 2: Выполнение веб-поиска через Perplexity API
+    // Шаг 2: Добавление статического шаблона к запросу
+    const finalQuery = `${decision.searchQuery}\n\n${PERPLEXITY_QUERY_TEMPLATE}`;
+
+    logger.debug(`Полный запрос с шаблоном (${finalQuery.length} символов)`);
+
+    // Шаг 3: Выполнение веб-поиска через Perplexity API
     const perplexityClient = PerplexityClient.getInstance();
 
     let perplexityResponse;
     try {
       if (decision.searchMode === 'fast') {
         logger.info('Запуск быстрого веб-поиска (sonar)');
-        perplexityResponse = await perplexityClient.fastSearch(decision.searchQuery);
+        perplexityResponse = await perplexityClient.fastSearch(finalQuery);
       } else {
-        logger.info('Запуск глубокого веб-исследования (sonar-deep-research)');
-        perplexityResponse = await perplexityClient.deepResearch(decision.searchQuery);
+        logger.info('Запуск глубокого веб-исследования (sonar-pro)');
+        perplexityResponse = await perplexityClient.deepResearch(finalQuery);
       }
 
-      // Формирование результата
+      // Формирование результата (content уже очищен автоматически в PerplexityClient)
       const webSearchResult: WebSearchResult = {
         searchMode: decision.searchMode,
         content: perplexityResponse.content,

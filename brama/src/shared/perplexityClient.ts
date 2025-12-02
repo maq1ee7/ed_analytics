@@ -2,11 +2,51 @@ import { Logger } from './logger.js';
 
 const logger = Logger.withPrefix('PerplexityClient');
 
-export type PerplexityModel = 'sonar' | 'sonar-deep-research';
+export type PerplexityModel = 'sonar' | 'sonar-pro';
 
 export interface PerplexityResponse {
   content: string;
   sources?: string[];
+  rawContent?: string; // Оригинальный ответ до очистки (для отладки)
+}
+
+/**
+ * Очищает ответ от Perplexity от всего лишнего контента после основного содержимого
+ * Удаляет списки источников, ссылки, дополнительный текст - всё что идет после основной таблицы/текста
+ *
+ * @param content - Сырой ответ от Perplexity
+ * @returns Очищенный ответ
+ */
+function cleanPerplexityResponse(content: string): string {
+  // Разбиваем на строки
+  const lines = content.split('\n');
+
+  // Ищем последнюю строку с таблицей (строка содержащая | и не пустая)
+  let lastTableLineIndex = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    // Это строка таблицы, если содержит | и не только разделитель
+    if (line.includes('|') && line.length > 0) {
+      lastTableLineIndex = i;
+    }
+  }
+
+  // Если нашли таблицу, возвращаем только её
+  if (lastTableLineIndex !== -1) {
+    // Берем все строки от начала до конца таблицы включительно
+    // Всё что после таблицы - удаляем полностью (источники, ссылки и т.д.)
+    const cleanedContent = lines.slice(0, lastTableLineIndex + 1).join('\n').trim();
+
+    logger.debug(
+      `Очистка ответа Perplexity: было ${content.length} символов, стало ${cleanedContent.length} символов (удалено ${content.length - cleanedContent.length})`
+    );
+
+    return cleanedContent;
+  }
+
+  // Если таблицы нет, возвращаем как есть (но можем добавить другие правила очистки)
+  logger.debug('Очистка ответа Perplexity: таблица не найдена, возвращаем оригинал');
+  return content.trim();
 }
 
 /**
@@ -59,18 +99,16 @@ export class PerplexityClient {
   }
 
   /**
-   * Глубокий веб-поиск с использованием модели sonar-deep-research
+   * Глубокий веб-поиск с использованием модели sonar-pro
    */
   public async deepResearch(query: string): Promise<PerplexityResponse> {
-    logger.info(`Запуск глубокого исследования: "${query}"`);
+    logger.info(`Запуск глубокого исследования (sonar-pro): "${query}"`);
 
     return this.callPerplexity({
-      model: 'sonar-deep-research',
+      model: 'sonar-pro',
       query,
-      webSearchOptions: {
-        search_context_size: 'high',
-      },
-      reasoningEffort: 'high',
+      webSearchOptions: undefined,  // Не передаем дополнительные параметры
+      reasoningEffort: undefined,   // Не передаем дополнительные параметры
       timeout: 90000, // 90 секунд
     });
   }
@@ -81,7 +119,7 @@ export class PerplexityClient {
   private async callPerplexity(options: {
     model: PerplexityModel;
     query: string;
-    webSearchOptions: {
+    webSearchOptions?: {
       search_context_size: 'low' | 'high';
     };
     reasoningEffort?: 'low' | 'medium' | 'high';
@@ -112,7 +150,7 @@ export class PerplexityClient {
             },
           ],
           enable_search_classifier: true,
-          web_search_options: webSearchOptions,
+          ...(webSearchOptions && { web_search_options: webSearchOptions }),
           ...(reasoningEffort && { reasoning_effort: reasoningEffort }),
           max_tokens: 800,
           temperature: 0.3,
@@ -133,16 +171,20 @@ export class PerplexityClient {
         throw new Error('Некорректный формат ответа от Perplexity API');
       }
 
-      const content = data.choices[0].message.content;
+      const rawContent = data.choices[0].message.content;
+
+      // Очищаем ответ от лишних ссылок и источников в конце
+      const content = cleanPerplexityResponse(rawContent);
 
       // Извлекаем источники, если они есть
       const sources = data.citations || [];
 
-      logger.info(`Получен ответ от Perplexity (${model}), длина: ${content.length} символов`);
+      logger.info(`Получен ответ от Perplexity (${model}), длина: ${content.length} символов (очищено), источников: ${sources.length}`);
 
       return {
         content,
         sources: sources.length > 0 ? sources : undefined,
+        rawContent, // Сохраняем оригинал для отладки
       };
 
     } catch (error) {

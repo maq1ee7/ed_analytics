@@ -42,6 +42,13 @@ export function buildWebSearchDecisionPrompt(
   "reasoning": "краткое пояснение выбора режима (1-2 предложения)"
 }`;
 
+  // Формируем информацию о координатах с названиями (если они есть)
+  const { colIndex, rowIndex, columnName, rowName } = viewSelection.cellCoordinates;
+
+  const coordinatesInfo = columnName && rowName
+    ? `колонка ${colIndex} ("${columnName}"), строка ${rowIndex} ("${rowName}")`
+    : `колонка ${colIndex}, строка ${rowIndex}`;
+
   const userMessage = `**Оригинальный запрос пользователя:**
 "${originalQuery}"
 
@@ -50,7 +57,7 @@ export function buildWebSearchDecisionPrompt(
 - Раздел: ${viewSelection.metadata.sectionName}
 - Представления: ${viewSelection.metadata.viewNames.join(', ')}
 - Количество найденных представлений: ${viewSelection.viewIds.length}
-- Координаты ячейки: колонка ${viewSelection.cellCoordinates.colIndex}, строка ${viewSelection.cellCoordinates.rowIndex}
+- Координаты ячейки: ${coordinatesInfo}
 
 **Проанализируй:**
 1. Насколько найденные данные соответствуют запросу пользователя?

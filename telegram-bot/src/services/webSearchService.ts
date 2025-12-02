@@ -48,7 +48,7 @@ export class WebSearchService {
    * Обработчик уведомлений о веб-поиске из очереди
    */
   private async processWebSearchNotification(job: Job<WebSearchNotification>): Promise<void> {
-    const { chatId, uid, searchMode, content, sources, query } = job.data;
+    const { chatId, uid, searchMode, content, query } = job.data;
 
     console.log(`[WebSearchService] Processing web search notification for chat ${chatId}, uid: ${uid}, mode: ${searchMode}`);
 
@@ -66,16 +66,8 @@ export class WebSearchService {
       // Добавляем поисковый запрос
       message += `\n\n📝 Запрос: "${query}"`;
 
-      // Добавляем основной контент
+      // Добавляем основной контент (источники уже встроены в таблицу)
       message += `\n\n${content}`;
-
-      // Добавляем источники, если есть
-      if (sources && sources.length > 0) {
-        message += '\n\n🔗 Источники:';
-        sources.forEach((source, index) => {
-          message += `\n${index + 1}. ${source}`;
-        });
-      }
 
       // Отправляем сообщение с Markdown форматированием
       await this.bot.telegram.sendMessage(chatId, message, {
@@ -99,12 +91,7 @@ export class WebSearchService {
         plainMessage += `\n\nЗапрос: "${query}"`;
         plainMessage += `\n\n${content}`;
 
-        if (sources && sources.length > 0) {
-          plainMessage += '\n\n🔗 Источники:';
-          sources.forEach((source, index) => {
-            plainMessage += `\n${index + 1}. ${source}`;
-          });
-        }
+        // Источники уже встроены в таблицу, не дублируем их
 
         await this.bot.telegram.sendMessage(chatId, plainMessage, {
           link_preview_options: { is_disabled: true }

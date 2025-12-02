@@ -14,7 +14,7 @@ export const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 // TODO: Move whitelist to database or external config before production
 // Временное решение: whitelist пользователей в коде
-export const ALLOWED_USERNAMES = ['v_karlov', 'kochemirov'];
+export const ALLOWED_USERNAMES = ['v_karlov', 'kochemirov','aschwn','nikitakozhevnikov','asartyom'];
 
 // Backend API configuration
 export const BACKEND_URL = process.env.BACKEND_URL || 'http://backend:5000';
