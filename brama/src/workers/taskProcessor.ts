@@ -39,27 +39,24 @@ export class TaskProcessor {
     console.log(`[Worker] Question: ${question}`);
 
     try {
-      // Генерируем dashboard через LLM + Neo4j + Perplexity
+      // Генерируем dashboard через LLM + Neo4j (БЕЗ веб-поиска)
       console.log(`[Worker] Generating dashboard for task ${taskId}`);
       const result = await DashboardGenerator.generateDashboardWithWebSearch(question);
 
-      // Логируем результат веб-поиска, если есть
-      if (result.webSearchResult) {
-        console.log(`[Worker] Web search completed (${result.webSearchResult.searchMode} mode)`);
-        console.log(`[Worker] Search query: "${result.webSearchResult.query}"`);
-        console.log(`[Worker] Content length: ${result.webSearchResult.content.length} chars`);
+      // Логируем контекст для веб-поиска
+      if (result.context) {
+        console.log(`[Worker] Context for web search:`, result.context);
       }
 
-      // Формируем результат с dashboard и опциональным webSearchResult
-      // result.dashboard уже содержит {dashboard: {...}}, поэтому используем spread
+      // Формируем результат с dashboard
+      // result.dashboard уже содержит {dashboard: {...}}
       const responsePayload = {
-        ...result.dashboard,
-        ...(result.webSearchResult && { webSearchResult: result.webSearchResult })
+        ...result.dashboard
       };
 
-      // Отправляем результат в Backend
+      // Отправляем результат в Backend с контекстом
       console.log(`[Worker] Sending success result for task ${taskId}`);
-      await CallbackSender.sendSuccess(callbackUrl, responsePayload);
+      await CallbackSender.sendSuccess(callbackUrl, responsePayload, result.context);
 
       console.log(`[Worker] Task ${taskId} completed successfully`);
 

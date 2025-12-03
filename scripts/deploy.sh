@@ -230,7 +230,10 @@ ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
     if [ '$FULL_REBUILD' = 'true' ]; then
         echo '🗑️  Удаляем старые образы для полной пересборки...'
         docker images | grep 'ed_analytics' | awk '{print \$3}' | xargs -r docker rmi -f 2>/dev/null || true
-        
+
+        echo '🧹 Очищаем Docker builder cache...'
+        docker builder prune -f 2>/dev/null || true
+
         echo '🔨 Собираем контейнеры БЕЗ КЭША (медленно)...'
         \$DOCKER_COMPOSE -f docker-compose.prod.yml build --no-cache
     else

@@ -107,9 +107,11 @@ export class PerplexityClient {
     return this.callPerplexity({
       model: 'sonar-pro',
       query,
-      webSearchOptions: undefined,  // Не передаем дополнительные параметры
-      reasoningEffort: undefined,   // Не передаем дополнительные параметры
-      timeout: 90000, // 90 секунд
+      webSearchOptions: {
+        search_context_size: 'high',  // Максимальный контекст для глубокого поиска
+      },
+      reasoningEffort: 'high',   // Максимальные усилия рассуждения
+      timeout: 150000, // 150 секунд 
     });
   }
 

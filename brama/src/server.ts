@@ -14,6 +14,7 @@ import processRoutes from './routes/process';
 import clarificationsRoutes from './routes/clarifications';
 import { QueueService } from './services/queueService';
 import { TaskProcessor } from './workers/taskProcessor';
+import { WebSearchProcessor } from './workers/webSearchProcessor.js';
 import { DashboardGenerator } from './utils/dashboardGenerator';
 
 const app = express();
@@ -39,6 +40,11 @@ DashboardGenerator.initialize();
 const queueService = QueueService.getInstance();
 const workerConcurrency = parseInt(process.env.WORKER_CONCURRENCY || '2', 10);
 TaskProcessor.initialize(workerConcurrency);
+
+// Инициализация WebSearchProcessor (параллельный веб-поиск)
+const webSearchConcurrency = parseInt(process.env.WEB_SEARCH_CONCURRENCY || '5', 10);
+const webSearchProcessor = new WebSearchProcessor(webSearchConcurrency);
+console.log(`🔍 WebSearchProcessor initialized with concurrency: ${webSearchConcurrency}`);
 
 // Bull Board UI (только в development режиме)
 if (NODE_ENV === 'development') {
@@ -117,9 +123,10 @@ app.listen(PORT, '0.0.0.0', () => {
 // Graceful shutdown
 const gracefulShutdown = async (signal: string) => {
   console.log(`\n${signal} received, shutting down gracefully...`);
-  
+
   try {
     await TaskProcessor.shutdown();
+    await webSearchProcessor.shutdown();
     await DashboardGenerator.shutdown();
     process.exit(0);
   } catch (error) {

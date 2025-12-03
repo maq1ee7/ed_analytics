@@ -54,13 +54,22 @@ export class CallbackSender {
   }
 
   /**
-   * Отправляет успешный результат
+   * Отправляет успешный результат с опциональным контекстом
+   * @param callbackUrl - URL для callback
+   * @param result - результат обработки
+   * @param context - контекст выполнения (для параллельного веб-поиска)
    */
-  static async sendSuccess(callbackUrl: string, result: any): Promise<void> {
-    await this.sendResult(callbackUrl, {
+  static async sendSuccess(callbackUrl: string, result: any, context?: any): Promise<void> {
+    const payload: any = {
       status: 'completed',
       result
-    });
+    };
+
+    if (context) {
+      payload.context = context;
+    }
+
+    await this.sendResult(callbackUrl, payload);
   }
 
   /**
@@ -71,6 +80,37 @@ export class CallbackSender {
       status: 'failed',
       error
     });
+  }
+
+  /**
+   * Отправляет результат веб-поиска
+   * @param callbackUrl - URL для callback веб-поиска
+   * @param webSearchResult - результат веб-поиска
+   */
+  static async sendWebSearchResult(callbackUrl: string, webSearchResult: any): Promise<void> {
+    const apiKey = process.env.ALLOWED_API_KEY;
+
+    try {
+      console.log(`[Callback] Sending web search result to ${callbackUrl}`);
+
+      const response = await axios.post(
+        callbackUrl,
+        { webSearchResult },
+        {
+          headers: {
+            'X-API-Key': apiKey,
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000,
+          proxy: false
+        }
+      );
+
+      console.log(`[Callback] Web search result sent successfully: ${response.status}`);
+    } catch (error) {
+      console.error('[Callback] Failed to send web search result:', error);
+      // Не бросаем ошибку - graceful degradation для веб-поиска
+    }
   }
 }
 

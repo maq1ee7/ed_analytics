@@ -3,6 +3,7 @@ import { authenticateToken } from '../middleware/auth';
 import { QueryModel } from '../models/Query';
 import { NotificationQueueService } from '../services/notificationQueue';
 import { WebSearchQueueService } from '../services/webSearchQueue';
+import { WebSearchTaskQueueService } from '../services/webSearchTaskQueue';
 import axios from 'axios';
 
 const router = Router();
@@ -439,7 +440,7 @@ router.post('/', authenticateToken, async (req: Request, res: Response): Promise
 router.post('/callbacks/:uid', apiKeyAuth, async (req: Request, res: Response): Promise<void> => {
   try {
     const { uid } = req.params;
-    const { status, result, error } = req.body;
+    const { status, result, error, context } = req.body;
 
     console.log(`[Backend] Received callback for task ${uid}, status: ${status}`);
 
@@ -514,20 +515,19 @@ router.post('/callbacks/:uid', apiKeyAuth, async (req: Request, res: Response): 
 
         console.log(`[Backend] Telegram notification queued for chat ${query.telegram_chat_id}`);
 
-        // Send web search notification if available
-        if (result?.webSearchResult) {
-          const webSearchQueue = WebSearchQueueService.getInstance();
+        // Добавить задачу веб-поиска с контекстом из LangGraph
+        if (context) {
+          const webSearchTaskQueue = WebSearchTaskQueueService.getInstance();
+          const backendUrl = process.env.BACKEND_URL || 'http://backend:5000';
 
-          await webSearchQueue.addNotification({
-            chatId: query.telegram_chat_id,
+          await webSearchTaskQueue.addTask({
             uid,
-            searchMode: result.webSearchResult.searchMode,
-            content: result.webSearchResult.content,
-            sources: result.webSearchResult.sources,
-            query: result.webSearchResult.query
+            question: query.question,
+            context,
+            callbackUrl: `${backendUrl}/api/queries/web-search-callbacks/${uid}`
           });
 
-          console.log(`[Backend] Web search notification queued for chat ${query.telegram_chat_id}`);
+          console.log(`[Backend] Web search task queued for ${uid}`);
         }
       }
 
@@ -565,6 +565,61 @@ router.post('/callbacks/:uid', apiKeyAuth, async (req: Request, res: Response): 
     res.status(500).json({
       error: 'Callback processing failed',
       message: 'Internal server error during callback processing'
+    });
+  }
+});
+
+// Callback endpoint для результатов веб-поиска от Brama
+router.post('/web-search-callbacks/:uid', apiKeyAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { uid } = req.params;
+    const { webSearchResult } = req.body;
+
+    console.log(`[Backend] Received web search callback for task ${uid}`);
+
+    // Валидация UUID формата
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(uid)) {
+      res.status(400).json({
+        error: 'Invalid UID',
+        message: 'UID must be a valid UUID format'
+      });
+      return;
+    }
+
+    // Проверяем существование запроса
+    const query = await QueryModel.findByUid(uid);
+    if (!query) {
+      res.status(404).json({
+        error: 'Query not found',
+        message: 'No query found with the provided UID'
+      });
+      return;
+    }
+
+    // Отправить уведомление о веб-поиске в Telegram (если есть chatId)
+    if (query.telegram_chat_id && webSearchResult) {
+      const webSearchQueue = WebSearchQueueService.getInstance();
+
+      await webSearchQueue.addNotification({
+        chatId: query.telegram_chat_id,
+        uid,
+        searchMode: webSearchResult.searchMode,
+        content: webSearchResult.content,
+        sources: webSearchResult.sources,
+        query: webSearchResult.query
+      });
+
+      console.log(`[Backend] Web search notification queued for chat ${query.telegram_chat_id}`);
+    }
+
+    res.json({ success: true, message: 'Web search result processed successfully' });
+
+  } catch (error) {
+    console.error('Web search callback processing error:', error);
+    res.status(500).json({
+      error: 'Web search callback processing failed',
+      message: 'Internal server error during web search callback processing'
     });
   }
 });

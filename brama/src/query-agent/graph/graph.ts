@@ -8,7 +8,6 @@ import { clarifyQueryNode } from './nodes/clarifyQueryNode.js';
 import { selectStatformNode } from './nodes/selectStatformNode.js';
 import { selectSectionNode } from './nodes/selectSectionNode.js';
 import { selectViewCellsNode } from './nodes/selectViewCellsNode.js';
-import { perplexityWebSearchNode } from './nodes/perplexityWebSearchNode.js';
 import { generateDashboardNode } from './nodes/generateDashboardNode.js';
 import { LLMClient } from '../../shared/llmClient.js';
 import { Neo4jClient } from '../../shared/neo4jClient.js';
@@ -37,9 +36,6 @@ export function buildQueryGraph(llmClient: LLMClient, neo4jClient: Neo4jClient) 
     })
     .addNode('selectViewCells', async (state: AgentStateType) => {
       return await selectViewCellsNode(state, llmClient, neo4jClient);
-    })
-    .addNode('perplexityWebSearch', async (state: AgentStateType) => {
-      return await perplexityWebSearchNode(state, llmClient, neo4jClient);
     })
     .addNode('generateDashboard', async (state: AgentStateType) => {
       return await generateDashboardNode(state);
@@ -72,11 +68,9 @@ export function buildQueryGraph(llmClient: LLMClient, neo4jClient: Neo4jClient) 
           logger.error('Ошибка на этапе выбора представления, завершение графа');
           return END;
         }
-        return 'perplexityWebSearch';
+        return 'generateDashboard';
       }
     )
-    // Веб-поиск всегда продолжает работу (graceful degradation при ошибках)
-    .addEdge('perplexityWebSearch', 'generateDashboard')
     .addEdge('generateDashboard', END)
     // Определить точку входа
     .setEntryPoint('selectStatform')

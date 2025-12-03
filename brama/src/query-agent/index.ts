@@ -13,12 +13,23 @@ import type { ClarificationResult, WebSearchResult } from './types.js';
 const logger = Logger.withPrefix('QueryAgent');
 
 /**
+ * Контекст выполнения LangGraph workflow
+ * Используется для запуска веб-поиска параллельно с генерацией дашборда
+ */
+export interface ExecutionContext {
+  statformIds: number[];
+  sectionId?: number;
+  viewCellData?: any;
+}
+
+/**
  * Расширенный результат обработки запроса
- * Включает dashboard и опциональный результат веб-поиска
+ * Включает dashboard и контекст для параллельного веб-поиска
  */
 export interface QueryProcessResult {
   dashboard: DashboardData;
-  webSearchResult?: WebSearchResult;
+  context?: ExecutionContext;
+  webSearchResult?: WebSearchResult;  // DEPRECATED, будет удален
 }
 
 /**
@@ -56,9 +67,9 @@ export class QueryAgent {
   }
 
   /**
-   * Обработать запрос пользователя и вернуть DashboardData + результат веб-поиска
+   * Обработать запрос пользователя и вернуть DashboardData + контекст для веб-поиска
    * @param question - текстовый запрос пользователя (может быть уточненным)
-   * @returns Promise<QueryProcessResult> - dashboard и опциональный webSearchResult
+   * @returns Promise<QueryProcessResult> - dashboard и контекст выполнения
    * @throws Error с сообщением на русском языке при ошибках
    */
   async processQueryWithWebSearch(question: string): Promise<QueryProcessResult> {
@@ -88,10 +99,19 @@ export class QueryAgent {
 
       logger.info('Запрос успешно обработан');
 
-      // Вернуть dashboard и результат веб-поиска (если есть)
+      // Сформировать контекст для параллельного веб-поиска
+      const context: ExecutionContext = {
+        statformIds: finalState.statformSelection?.statformIds || [],
+        sectionId: finalState.sectionSelection?.sectionId,
+        viewCellData: finalState.viewSelection
+      };
+
+      logger.debug('Контекст для веб-поиска:', context);
+
+      // Вернуть dashboard и контекст
       return {
         dashboard: finalState.dashboardData as DashboardData,
-        webSearchResult: finalState.webSearch
+        context
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Неизвестная ошибка';

@@ -80,6 +80,14 @@ export class RedisService {
 
         console.log(`[RedisService] Success notification sent to chat ${chatId}`);
 
+        // Добавляем индикацию веб-поиска
+        await this.bot.telegram.sendMessage(
+          chatId,
+          '🔍 Выполняю дополнительный веб-поиск для уточнения данных. Результаты придут отдельным сообщением.'
+        );
+
+        console.log(`[RedisService] Web search indicator sent to chat ${chatId}`);
+
       } else if (status === 'failed') {
         // Отправляем сообщение об ошибке
         const message = errorMessage || 'Произошла ошибка при обработке запроса. Попробуйте еще раз.';
