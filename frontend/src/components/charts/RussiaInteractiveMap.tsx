@@ -37,28 +37,47 @@ const RussiaInteractiveMap: React.FC<RussiaInteractiveMapProps> = ({ data, class
     return map;
   }, [currentYearData]);
 
-  // Вычисляем квантили для равномерного распределения цветов
+  // Вычисляем квантили для всех лет один раз
+  const allYearsQuantiles = useMemo(() => {
+    return data.years.map(yearData => {
+      const values = yearData.regions.map(r => r.value).sort((a, b) => a - b);
+      if (values.length === 0) {
+        return [0, 0, 0, 0, 0, 0, 0, 0];
+      }
+      
+      const getQuantile = (percent: number) => {
+        const index = Math.ceil((values.length * percent) / 100) - 1;
+        return values[Math.max(0, Math.min(index, values.length - 1))];
+      };
+      
+      return [
+        getQuantile(12.5),  // 12.5-й перцентиль
+        getQuantile(25),    // 25-й перцентиль
+        getQuantile(37.5),  // 37.5-й перцентиль
+        getQuantile(50),    // 50-й перцентиль (медиана)
+        getQuantile(62.5),  // 62.5-й перцентиль
+        getQuantile(75),    // 75-й перцентиль
+        getQuantile(87.5),  // 87.5-й перцентиль
+        getQuantile(100)    // максимум
+      ];
+    });
+  }, [data]);
+
+  // Вычисляем максимальные квантили среди всех лет для фиксированной ширины легенды
+  const maxQuantiles = useMemo(() => {
+    const maxValues = [0, 0, 0, 0, 0, 0, 0, 0];
+    allYearsQuantiles.forEach(yearQuantiles => {
+      yearQuantiles.forEach((value, index) => {
+        maxValues[index] = Math.max(maxValues[index], value);
+      });
+    });
+    return maxValues;
+  }, [allYearsQuantiles]);
+
+  // Квантили для текущего года (для раскраски регионов)
   const quantiles = useMemo(() => {
-    const values = currentYearData.regions.map(r => r.value).sort((a, b) => a - b);
-    if (values.length === 0) return [0, 0, 0, 0, 0, 0, 0, 0];
-    
-    // Вычисляем 8 квантилей (октили: 12.5%, 25%, 37.5%, 50%, 62.5%, 75%, 87.5%, 100%)
-    const getQuantile = (percent: number) => {
-      const index = Math.ceil((values.length * percent) / 100) - 1;
-      return values[Math.max(0, Math.min(index, values.length - 1))];
-    };
-    
-    return [
-      getQuantile(12.5),  // 12.5-й перцентиль
-      getQuantile(25),    // 25-й перцентиль
-      getQuantile(37.5),  // 37.5-й перцентиль
-      getQuantile(50),    // 50-й перцентиль (медиана)
-      getQuantile(62.5),  // 62.5-й перцентиль
-      getQuantile(75),    // 75-й перцентиль
-      getQuantile(87.5),  // 87.5-й перцентиль
-      getQuantile(100)    // максимум
-    ];
-  }, [currentYearData]);
+    return allYearsQuantiles[currentYearIndex];
+  }, [allYearsQuantiles, currentYearIndex]);
 
   const handleRegionMouseEnter = useCallback((regionCode: RegionCode) => {
     setHoveredRegion(regionCode);
@@ -138,7 +157,14 @@ const RussiaInteractiveMap: React.FC<RussiaInteractiveMapProps> = ({ data, class
     return num.toLocaleString('ru-RU', { maximumFractionDigits: 1 });
   };
 
-  // Данные для легенды
+  // Вычисляем максимальную ширину для легенды (самое длинное число среди всех лет)
+  const maxLegendWidth = useMemo(() => {
+    const maxLength = Math.max(...maxQuantiles.map(q => formatNumber(q).length));
+    // Каждый символ примерно 8px + символ "≤ " + небольшой запас
+    return Math.max(100, maxLength * 8 + 20);
+  }, [maxQuantiles]);
+
+  // Данные для легенды - используем квантили текущего года
   const legendData = useMemo(() => [
     { color: '#1e3a8a', hoverColor: '#1e40af', label: `≤ ${formatNumber(quantiles[0])}`, range: '0-12.5%' },
     { color: '#1e40af', hoverColor: '#1d4ed8', label: `≤ ${formatNumber(quantiles[1])}`, range: '12.5-25%' },
@@ -258,7 +284,7 @@ const RussiaInteractiveMap: React.FC<RussiaInteractiveMapProps> = ({ data, class
                     className="w-8 h-6 rounded border border-gray-300 flex-shrink-0"
                     style={{ backgroundColor: item.color }}
                   />
-                  <div className="text-xs text-gray-700">
+                  <div className="text-xs text-gray-700" style={{ minWidth: `${maxLegendWidth}px` }}>
                     <div className="font-medium">{item.label}</div>
                     <div className="text-gray-500">{item.range}</div>
                   </div>
