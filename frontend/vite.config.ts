@@ -12,6 +12,16 @@ export default defineConfig({
     port: 3000,
     host: true
   },
+  build: {
+    // Ensure files have hash in their names for cache busting
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/[name].[hash].js',
+        chunkFileNames: 'assets/[name].[hash].js',
+        assetFileNames: 'assets/[name].[hash].[ext]'
+      }
+    }
+  }
 })
 
 

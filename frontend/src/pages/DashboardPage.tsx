@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import QueriesHistory from '../components/QueriesHistory';
@@ -9,6 +9,7 @@ const DashboardPage: React.FC = () => {
   const { uid } = useParams<{ uid?: string }>();
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleLogout = async (): Promise<void> => {
     try {
@@ -34,6 +35,19 @@ const DashboardPage: React.FC = () => {
     }
   };
 
+  const toggleSidebar = (): void => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const handleSidebarKeyDown = (e: React.KeyboardEvent): void => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      toggleSidebar();
+    }
+  };
+
+  const closeSidebar = (): void => {
+    setIsSidebarOpen(false);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -52,6 +66,29 @@ const DashboardPage: React.FC = () => {
             {/* Заголовок показываем только для авторизованных */}
             {isAuthenticated && (
               <div className="flex items-center">
+                {/* Кнопка-бургер для мобильных устройств */}
+                <button
+                  onClick={toggleSidebar}
+                  onKeyDown={handleSidebarKeyDown}
+                  className="lg:hidden p-4 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
+                  aria-label="Открыть меню"
+                  tabIndex={0}
+                >
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 6h16M4 12h16M4 18h16"
+                    />
+                  </svg>
+                </button>
+                
                 <h1 className="text-lg font-semibold text-gray-900 p-4">
                   Система аналитики образования
                 </h1>
@@ -95,16 +132,33 @@ const DashboardPage: React.FC = () => {
       </nav>
 
       {/* Основной контент с боковой панелью */}
-      <div className="flex" style={{ height: 'calc(100vh - 4rem)' }}>
+      <div className="flex relative" style={{ height: 'calc(100vh - 4rem)' }}>
+        {/* Оверлей для мобильных устройств */}
+        {isAuthenticated && isSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+            onClick={closeSidebar}
+            aria-hidden="true"
+          />
+        )}
+
         {/* Левая панель - История запросов (только для авторизованных) */}
         {isAuthenticated && (
-          <div className="w-1/4 min-w-80">
+          <div
+            className={`
+              fixed lg:static inset-y-0 left-0 z-30
+              w-80 lg:w-1/4 lg:min-w-80
+              transform transition-transform duration-300 ease-in-out
+              ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            `}
+            style={{ top: '4rem' }}
+          >
             <QueriesHistory />
           </div>
         )}
 
         {/* Правая панель - Основной контент */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto w-full">
           <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
             <div className="px-4 py-6 sm:px-0">
               <ChartsGrid uid={uid} />
