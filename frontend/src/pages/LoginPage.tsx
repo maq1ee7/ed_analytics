@@ -66,6 +66,12 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  const handleFillTestCredentials = (): void => {
+    setUsername('testuser');
+    setPassword('password123');
+    if (error) setError(''); // Очищаем ошибку при заполнении
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -148,11 +154,19 @@ const LoginPage: React.FC = () => {
           </div>
 
           <div className="text-center">
-            <div className="text-sm text-gray-600 bg-gray-100 p-3 rounded">
+            <div 
+              className="text-sm text-gray-600 bg-gray-100 p-3 rounded cursor-pointer hover:bg-gray-200 transition-colors"
+              onClick={handleFillTestCredentials}
+              onKeyDown={(e) => e.key === 'Enter' && handleFillTestCredentials()}
+              role="button"
+              tabIndex={0}
+              aria-label="Заполнить тестовые учетные данные"
+            >
               <p className="font-semibold mb-2">Тестовая учетная запись:</p>
               <div className="text-xs">
                 <p><span className="font-medium">testuser</span> / password123</p>
               </div>
+              <p className="text-xs text-gray-500 mt-1 italic">Нажмите для автозаполнения</p>
             </div>
           </div>
         </form>
