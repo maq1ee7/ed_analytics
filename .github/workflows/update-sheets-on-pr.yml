@@ -1,0 +1,114 @@
+name: Update Google Sheets on PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  update-sheets:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          cd .github/scripts
+          npm install
+
+      - name: Extract Task ID and Update Sheets
+        id: update
+        env:
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+          GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          SHEET_NAME: Задачи
+        run: |
+          cd .github/scripts
+          node update-sheets.js
+
+      - name: Update PR Description with Sheet Link
+        if: success() && steps.update.outputs.task_id != ''
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const taskId = '${{ steps.update.outputs.task_id }}';
+            const sheetLink = '${{ steps.update.outputs.sheet_link }}';
+
+            if (!taskId || !sheetLink) {
+              console.log('Task ID or sheet link not available, skipping PR update');
+              return;
+            }
+
+            const prNumber = context.payload.pull_request.number;
+            const currentBody = context.payload.pull_request.body || '';
+
+            // Проверяем, есть ли уже ссылка на sheets
+            if (currentBody.includes('📊 **Связанная задача**')) {
+              console.log('PR description already contains sheet link');
+              return;
+            }
+
+            // Добавляем ссылку на Google Sheets
+            const taskLink = `\n\n---\n📊 **Связанная задача:** [Открыть в Google Sheets](${sheetLink}) (${taskId})`;
+            const newBody = currentBody + taskLink;
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              body: newBody
+            });
+
+            console.log(`✅ Updated PR #${prNumber} description with sheet link`);
+
+      - name: Comment with Summary
+        if: success() && steps.update.outputs.task_id != ''
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const taskId = '${{ steps.update.outputs.task_id }}';
+            const sheetLink = '${{ steps.update.outputs.sheet_link }}';
+
+            if (!taskId) return;
+
+            const comment = `✅ **Google Sheets обновлен**
+
+            **Task ID:** \`${taskId}\`
+            **Строка:** ${taskId.replace('IT-', '')}
+
+            Ссылка на задачу в таблице добавлена в описание PR.
+
+            [Открыть задачу в Google Sheets →](${sheetLink})`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+
+            console.log('✅ Posted summary comment');
+
+      - name: Show Results
+        if: always()
+        run: |
+          echo "Task ID: ${{ steps.update.outputs.task_id }}"
+          echo "Row Number: ${{ steps.update.outputs.row_number }}"
+          echo "Sheet Link: ${{ steps.update.outputs.sheet_link }}"
+          echo "Status: ${{ steps.update.outcome }}"
