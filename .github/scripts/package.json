@@ -1,0 +1,19 @@
+{
+  "name": "github-sheets-integration",
+  "version": "1.0.0",
+  "description": "GitHub Actions + Google Sheets automation for stellar-burgers",
+  "main": "update-sheets.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "github-actions",
+    "google-sheets",
+    "automation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "googleapis": "^118.0.0"
+  }
+}
