@@ -2,9 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-import { createBullBoard } from '@bull-board/api';
-import { BullAdapter } from '@bull-board/api/bullAdapter';
-import { ExpressAdapter } from '@bull-board/express';
 
 // Загружаем переменные окружения
 dotenv.config();
@@ -40,20 +37,6 @@ const queueService = QueueService.getInstance();
 const workerConcurrency = parseInt(process.env.WORKER_CONCURRENCY || '2', 10);
 TaskProcessor.initialize(workerConcurrency);
 
-// Bull Board UI (только в development режиме)
-if (NODE_ENV === 'development') {
-  const serverAdapter = new ExpressAdapter();
-  serverAdapter.setBasePath('/admin/queues');
-
-  createBullBoard({
-    queues: [new BullAdapter(queueService.getQueue())],
-    serverAdapter: serverAdapter
-  });
-
-  app.use('/admin/queues', serverAdapter.getRouter());
-  console.log('📊 Bull Board UI enabled at /admin/queues');
-}
-
 // API Routes
 app.use('/api/process', processRoutes);
 app.use('/api/clarifications', clarificationsRoutes);
@@ -62,7 +45,7 @@ app.use('/api/clarifications', clarificationsRoutes);
 app.get('/health', async (req, res) => {
   try {
     const stats = await queueService.getStats();
-    
+
     res.json({
       status: 'OK',
       timestamp: new Date().toISOString(),
@@ -71,14 +54,14 @@ app.get('/health', async (req, res) => {
         waiting: stats.waiting,
         active: stats.active,
         completed: stats.completed,
-        failed: stats.failed
-      }
+        failed: stats.failed,
+      },
     });
   } catch (error) {
     res.status(503).json({
       status: 'ERROR',
       timestamp: new Date().toISOString(),
-      error: 'Queue unavailable'
+      error: 'Queue unavailable',
     });
   }
 });
@@ -87,7 +70,7 @@ app.get('/health', async (req, res) => {
 app.use('*', (req, res) => {
   res.status(404).json({
     error: 'Route not found',
-    path: req.originalUrl
+    path: req.originalUrl,
   });
 });
 
@@ -96,7 +79,7 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   console.error('Error:', err.message);
   res.status(500).json({
     error: 'Internal server error',
-    message: NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    message: NODE_ENV === 'development' ? err.message : 'Something went wrong',
   });
 });
 
@@ -107,9 +90,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`📊 Environment: ${NODE_ENV}`);
   console.log(`🌐 Server: http://0.0.0.0:${PORT}`);
   console.log(`💚 Health: http://0.0.0.0:${PORT}/health`);
-  if (NODE_ENV === 'development') {
-    console.log(`📈 Bull Board: http://0.0.0.0:${PORT}/admin/queues`);
-  }
   console.log(`👷 Workers: ${workerConcurrency} concurrent tasks`);
   console.log('');
 });
@@ -117,7 +97,7 @@ app.listen(PORT, '0.0.0.0', () => {
 // Graceful shutdown
 const gracefulShutdown = async (signal: string) => {
   console.log(`\n${signal} received, shutting down gracefully...`);
-  
+
   try {
     await TaskProcessor.shutdown();
     await DashboardGenerator.shutdown();
@@ -130,5 +110,3 @@ const gracefulShutdown = async (signal: string) => {
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-

@@ -1,44 +1,45 @@
-import Bull, { Queue, Job } from 'bull';
+import { Worker, Job } from 'bullmq';
 import { REDIS_HOST, REDIS_PORT } from '../config';
 import { WebSearchNotification } from '../types';
 import { Telegraf } from 'telegraf';
 
 /**
- * Сервис для обработки уведомлений о веб-поиске из Redis Bull queue
+ * Сервис для обработки уведомлений о веб-поиске из Redis BullMQ queue
  */
 export class WebSearchService {
-  private queue: Queue<WebSearchNotification>;
+  private worker: Worker<WebSearchNotification>;
   private bot: Telegraf;
 
   constructor(bot: Telegraf) {
     this.bot = bot;
 
+    const connection = {
+      host: REDIS_HOST,
+      port: REDIS_PORT,
+    };
+
     console.log(`[WebSearchService] Connecting to Redis at ${REDIS_HOST}:${REDIS_PORT}`);
 
-    // Подключаемся к очереди telegram-web-search
-    this.queue = new Bull<WebSearchNotification>('telegram-web-search', {
-      redis: {
-        host: REDIS_HOST,
-        port: REDIS_PORT,
-        maxRetriesPerRequest: null,
-        enableReadyCheck: false
-      }
-    });
+    // Создаем Worker для обработки уведомлений о веб-поиске
+    this.worker = new Worker<WebSearchNotification>(
+      'telegram-web-search',
+      async (job: Job<WebSearchNotification>) => {
+        await this.processWebSearchNotification(job);
+      },
+      { connection }
+    );
 
-    // Регистрируем обработчик уведомлений
-    this.queue.process(this.processWebSearchNotification.bind(this));
-
-    // Слушатели событий
-    this.queue.on('error', (error) => {
-      console.error('[WebSearchService] Queue error:', error);
-    });
-
-    this.queue.on('completed', (job) => {
+    // Слушатели событий Worker
+    this.worker.on('completed', (job) => {
       console.log(`[WebSearchService] Job ${job.id} completed successfully`);
     });
 
-    this.queue.on('failed', (job, error) => {
-      console.error(`[WebSearchService] Job ${job.id} failed:`, error.message);
+    this.worker.on('failed', (job, error) => {
+      console.error(`[WebSearchService] Job ${job?.id} failed:`, error.message);
+    });
+
+    this.worker.on('error', (error) => {
+      console.error('[WebSearchService] Worker error:', error);
     });
 
     console.log('[WebSearchService] Subscribed to telegram-web-search queue');
@@ -80,11 +81,10 @@ export class WebSearchService {
       // Отправляем сообщение с Markdown форматированием
       await this.bot.telegram.sendMessage(chatId, message, {
         parse_mode: 'Markdown',
-        link_preview_options: { is_disabled: true }
+        link_preview_options: { is_disabled: true },
       });
 
       console.log(`[WebSearchService] Web search notification sent to chat ${chatId}`);
-
     } catch (error) {
       // Если не удалось отправить с Markdown, пробуем без форматирования
       try {
@@ -107,14 +107,13 @@ export class WebSearchService {
         }
 
         await this.bot.telegram.sendMessage(chatId, plainMessage, {
-          link_preview_options: { is_disabled: true }
+          link_preview_options: { is_disabled: true },
         });
 
         console.log(`[WebSearchService] Web search notification sent (plain text) to chat ${chatId}`);
-
       } catch (retryError) {
         console.error(`[WebSearchService] Failed to send web search notification to chat ${chatId}:`, retryError);
-        throw retryError; // Пробросим ошибку для retry механизма Bull
+        throw retryError; // Пробросим ошибку для retry механизма BullMQ
       }
     }
   }
@@ -124,7 +123,7 @@ export class WebSearchService {
    */
   async close(): Promise<void> {
     console.log('[WebSearchService] Closing web search queue connection...');
-    await this.queue.close();
+    await this.worker.close();
     console.log('[WebSearchService] Web search queue connection closed');
   }
 }

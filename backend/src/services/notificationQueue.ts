@@ -1,4 +1,12 @@
-import Bull, { Queue } from 'bull';
+import { Queue } from 'bullmq';
+
+/**
+ * Redis connection configuration
+ */
+const getConnection = () => ({
+  host: process.env.REDIS_HOST || 'localhost',
+  port: parseInt(process.env.REDIS_PORT || '6379', 10),
+});
 
 /**
  * Интерфейс для уведомления в Telegram
@@ -15,48 +23,29 @@ export interface TelegramNotification {
 }
 
 /**
- * Сервис для работы с очередью уведомлений Telegram
+ * Сервис для работы с очередью уведомлений Telegram (BullMQ)
  */
 export class NotificationQueueService {
   private static instance: NotificationQueueService;
   private queue: Queue<TelegramNotification>;
 
   private constructor() {
-    const redisHost = process.env.REDIS_HOST || 'localhost';
-    const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
+    const connection = getConnection();
 
-    console.log(`[NotificationQueue] Connecting to Redis at ${redisHost}:${redisPort}`);
+    console.log(`[NotificationQueue] Connecting to Redis at ${connection.host}:${connection.port}`);
 
-    // Создаем очередь Bull для уведомлений
-    this.queue = new Bull<TelegramNotification>('telegram-notifications', {
-      redis: {
-        host: redisHost,
-        port: redisPort,
-        maxRetriesPerRequest: null,
-        enableReadyCheck: false
-      },
+    // Создаем очередь BullMQ для уведомлений
+    this.queue = new Queue<TelegramNotification>('telegram-notifications', {
+      connection,
       defaultJobOptions: {
         attempts: 3, // 3 попытки отправки уведомления
         removeOnComplete: true,
         removeOnFail: false,
         backoff: {
           type: 'exponential',
-          delay: 2000 // Задержка между попытками: 2s, 4s, 8s
-        }
-      }
-    });
-
-    // Слушатели событий
-    this.queue.on('error', (error) => {
-      console.error('[NotificationQueue] Error:', error);
-    });
-
-    this.queue.on('completed', (job) => {
-      console.log(`[NotificationQueue] Notification ${job.id} sent successfully`);
-    });
-
-    this.queue.on('failed', (job, error) => {
-      console.error(`[NotificationQueue] Notification ${job.id} failed:`, error.message);
+          delay: 2000, // Задержка между попытками: 2s, 4s, 8s
+        },
+      },
     });
 
     console.log('[NotificationQueue] Notification queue initialized');
@@ -73,18 +62,25 @@ export class NotificationQueueService {
   }
 
   /**
+   * Возвращает конфигурацию подключения к Redis
+   */
+  static getConnection() {
+    return getConnection();
+  }
+
+  /**
    * Добавляет уведомление в очередь
    */
   async addNotification(notification: TelegramNotification): Promise<void> {
     console.log(`[NotificationQueue] Adding notification for chat ${notification.chatId}, uid: ${notification.uid}`);
-    
-    await this.queue.add(notification, {
-      jobId: `telegram-${notification.uid}-${Date.now()}` // Уникальный ID
+
+    await this.queue.add('notification', notification, {
+      jobId: `telegram-${notification.uid}-${Date.now()}`, // Уникальный ID
     });
   }
 
   /**
-   * Получает очередь для регистрации процессора (используется в telegram-bot)
+   * Получает очередь (для статистики)
    */
   getQueue(): Queue<TelegramNotification> {
     return this.queue;
@@ -99,4 +95,3 @@ export class NotificationQueueService {
     console.log('[NotificationQueue] Notification queue closed');
   }
 }
-

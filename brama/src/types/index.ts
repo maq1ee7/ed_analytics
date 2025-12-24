@@ -6,7 +6,6 @@
 export interface ProcessTask {
   taskId: string;
   question: string;
-  callbackUrl: string;
 }
 
 // Результат обработки

@@ -13,6 +13,7 @@ import queryRoutes from './routes/queries';
 import { authenticateToken } from './middleware/auth';
 import { runMigrations } from './utils/migrations';
 import { WebSearchQueueService } from './services/webSearchQueue';
+import { ResultsWorker } from './workers/resultsWorker';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '5000', 10);
@@ -95,6 +96,10 @@ const startServer = async (): Promise<void> => {
     // Инициализируем Web Search Queue
     WebSearchQueueService.getInstance();
     console.log('✅ Web Search Queue initialized');
+
+    // Инициализируем Results Worker для обработки результатов от Brama
+    ResultsWorker.initialize();
+    console.log('✅ Results Worker initialized');
 
     // Потом запускаем сервер
     app.listen(PORT, '0.0.0.0', () => {
