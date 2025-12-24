@@ -2,7 +2,7 @@
  * Типы для Telegram бота
  */
 
-// Интерфейс уведомления из Bull queue
+// Интерфейс уведомления из BullMQ queue
 export interface TelegramNotification {
   chatId: number;
   uid: string;
@@ -14,7 +14,7 @@ export interface TelegramNotification {
   yearlyData?: Array<{ year: number; value: number | null }>;
 }
 
-// Интерфейс уведомления о веб-поиске из Bull queue
+// Интерфейс уведомления о веб-поиске из BullMQ queue
 export interface WebSearchNotification {
   chatId: number;
   uid: string;
