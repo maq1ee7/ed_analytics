@@ -1,29 +1,47 @@
-import { Job } from 'bull';
+import { Worker, Job } from 'bullmq';
 import { ProcessTask } from '../types';
 import { DashboardGenerator } from '../utils/dashboardGenerator';
-import { CallbackSender } from '../utils/callbackSender';
+import { ResultsQueueService } from '../services/resultsQueue';
 import { QueueService } from '../services/queueService';
 
 /**
- * Worker процессор для обработки задач из очереди
+ * Worker процессор для обработки задач из очереди BullMQ
  */
 export class TaskProcessor {
-  private static concurrency: number;
+  private static worker: Worker<ProcessTask> | null = null;
 
   /**
    * Инициализирует worker процессор
    * @param concurrency - количество параллельных задач (по умолчанию 2)
    */
   static initialize(concurrency: number = 2): void {
-    this.concurrency = concurrency;
-    const queueService = QueueService.getInstance();
-    const queue = queueService.getQueue();
+    const connection = QueueService.getConnection();
 
     console.log(`[Worker] Starting worker with concurrency: ${concurrency}`);
 
-    // Регистрируем процессор задач
-    queue.process(concurrency, async (job: Job<ProcessTask>) => {
-      return await this.processTask(job);
+    // Создаем Worker для обработки задач
+    this.worker = new Worker<ProcessTask>(
+      'llm-processing',
+      async (job: Job<ProcessTask>) => {
+        return await this.processTask(job);
+      },
+      {
+        connection,
+        concurrency,
+      }
+    );
+
+    // Слушатели событий Worker
+    this.worker.on('completed', (job) => {
+      console.log(`[Worker] Job ${job.id} completed successfully`);
+    });
+
+    this.worker.on('failed', (job, error) => {
+      console.error(`[Worker] Job ${job?.id} failed:`, error.message);
+    });
+
+    this.worker.on('error', (error) => {
+      console.error('[Worker] Worker error:', error);
     });
 
     console.log('[Worker] Worker initialized and ready to process tasks');
@@ -33,7 +51,8 @@ export class TaskProcessor {
    * Обрабатывает одну задачу
    */
   private static async processTask(job: Job<ProcessTask>): Promise<void> {
-    const { taskId, question, callbackUrl } = job.data;
+    const { taskId, question } = job.data;
+    const resultsQueue = ResultsQueueService.getInstance();
 
     console.log(`[Worker] Processing task ${taskId}`);
     console.log(`[Worker] Question: ${question}`);
@@ -54,29 +73,28 @@ export class TaskProcessor {
       // result.dashboard уже содержит {dashboard: {...}}, поэтому используем spread
       const responsePayload = {
         ...result.dashboard,
-        ...(result.webSearchResult && { webSearchResult: result.webSearchResult })
+        ...(result.webSearchResult && { webSearchResult: result.webSearchResult }),
       };
 
-      // Отправляем результат в Backend
-      console.log(`[Worker] Sending success result for task ${taskId}`);
-      await CallbackSender.sendSuccess(callbackUrl, responsePayload);
+      // Публикуем результат в очередь
+      console.log(`[Worker] Publishing success result for task ${taskId}`);
+      await resultsQueue.publishSuccess(taskId, responsePayload);
 
       console.log(`[Worker] Task ${taskId} completed successfully`);
-
     } catch (error) {
       console.error(`[Worker] Error processing task ${taskId}:`, error);
 
       // Определяем сообщение об ошибке
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
 
-      // Пытаемся отправить ошибку в Backend
+      // Публикуем ошибку в очередь
       try {
-        await CallbackSender.sendError(callbackUrl, errorMessage);
-      } catch (callbackError) {
-        console.error(`[Worker] Failed to send error callback for task ${taskId}:`, callbackError);
+        await resultsQueue.publishError(taskId, errorMessage);
+      } catch (queueError) {
+        console.error(`[Worker] Failed to publish error for task ${taskId}:`, queueError);
       }
 
-      // Пробрасываем ошибку дальше для Bull
+      // Пробрасываем ошибку дальше для BullMQ
       throw error;
     }
   }
@@ -86,10 +104,17 @@ export class TaskProcessor {
    */
   static async shutdown(): Promise<void> {
     console.log('[Worker] Shutting down worker...');
+
+    if (this.worker) {
+      await this.worker.close();
+    }
+
     const queueService = QueueService.getInstance();
     await queueService.close();
+
+    const resultsQueue = ResultsQueueService.getInstance();
+    await resultsQueue.close();
+
     console.log('[Worker] Worker shut down complete');
   }
 }
-
-

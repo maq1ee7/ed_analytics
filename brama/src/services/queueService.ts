@@ -1,54 +1,55 @@
-import Bull, { Queue, Job } from 'bull';
+import { Queue, QueueEvents, Job } from 'bullmq';
 import { ProcessTask } from '../types';
 
 /**
- * Сервис управления очередью задач Bull
+ * Redis connection configuration
+ */
+const getConnection = () => ({
+  host: process.env.REDIS_HOST || 'localhost',
+  port: parseInt(process.env.REDIS_PORT || '6379', 10),
+});
+
+/**
+ * Сервис управления очередью задач BullMQ
  */
 export class QueueService {
   private static instance: QueueService;
   private queue: Queue<ProcessTask>;
+  private queueEvents: QueueEvents;
 
   private constructor() {
-    const redisHost = process.env.REDIS_HOST || 'localhost';
-    const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
+    const connection = getConnection();
 
-    console.log(`[Queue] Connecting to Redis at ${redisHost}:${redisPort}`);
+    console.log(`[Queue] Connecting to Redis at ${connection.host}:${connection.port}`);
 
-    // Создаем очередь Bull
-    this.queue = new Bull<ProcessTask>('llm-processing', {
-      redis: {
-        host: redisHost,
-        port: redisPort,
-        maxRetriesPerRequest: null,
-        enableReadyCheck: false
-      },
+    // Создаем очередь BullMQ
+    this.queue = new Queue<ProcessTask>('llm-processing', {
+      connection,
       defaultJobOptions: {
         attempts: 1, // Не повторяем задачи при ошибке
         removeOnComplete: true, // Удаляем завершенные задачи
         removeOnFail: false, // Сохраняем failed задачи для анализа
-        timeout: 300000 // Таймаут 5 минут (300 секунд)
-      }
+      },
     });
+
+    // QueueEvents для отслеживания событий
+    this.queueEvents = new QueueEvents('llm-processing', { connection });
 
     // Слушатели событий очереди
-    this.queue.on('error', (error) => {
-      console.error('[Queue] Error:', error);
-    });
-
-    this.queue.on('waiting', (jobId) => {
+    this.queueEvents.on('waiting', ({ jobId }) => {
       console.log(`[Queue] Job ${jobId} is waiting`);
     });
 
-    this.queue.on('active', (job) => {
-      console.log(`[Queue] Job ${job.id} started processing`);
+    this.queueEvents.on('active', ({ jobId }) => {
+      console.log(`[Queue] Job ${jobId} started processing`);
     });
 
-    this.queue.on('completed', (job) => {
-      console.log(`[Queue] Job ${job.id} completed`);
+    this.queueEvents.on('completed', ({ jobId }) => {
+      console.log(`[Queue] Job ${jobId} completed`);
     });
 
-    this.queue.on('failed', (job, error) => {
-      console.error(`[Queue] Job ${job.id} failed:`, error.message);
+    this.queueEvents.on('failed', ({ jobId, failedReason }) => {
+      console.error(`[Queue] Job ${jobId} failed:`, failedReason);
     });
 
     console.log('[Queue] Queue service initialized');
@@ -65,21 +66,27 @@ export class QueueService {
   }
 
   /**
+   * Возвращает конфигурацию подключения к Redis
+   */
+  static getConnection() {
+    return getConnection();
+  }
+
+  /**
    * Добавляет задачу в очередь
    */
   async addTask(task: ProcessTask): Promise<Job<ProcessTask>> {
     console.log(`[Queue] Adding task ${task.taskId} to queue`);
-    
-    const job = await this.queue.add(task, {
-      jobId: task.taskId, // Используем taskId как ID задачи в Bull
-      timeout: 300000 // 5 минут таймаут
+
+    const job = await this.queue.add('process', task, {
+      jobId: task.taskId, // Используем taskId как ID задачи
     });
 
     return job;
   }
 
   /**
-   * Получает экземпляр очереди для регистрации процессора
+   * Получает экземпляр очереди (для статистики)
    */
   getQueue(): Queue<ProcessTask> {
     return this.queue;
@@ -93,7 +100,7 @@ export class QueueService {
       this.queue.getWaitingCount(),
       this.queue.getActiveCount(),
       this.queue.getCompletedCount(),
-      this.queue.getFailedCount()
+      this.queue.getFailedCount(),
     ]);
 
     return { waiting, active, completed, failed };
@@ -104,9 +111,8 @@ export class QueueService {
    */
   async close(): Promise<void> {
     console.log('[Queue] Closing queue connection...');
+    await this.queueEvents.close();
     await this.queue.close();
     console.log('[Queue] Queue closed');
   }
 }
-
-

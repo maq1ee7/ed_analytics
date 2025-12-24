@@ -1,13 +1,13 @@
-import Bull, { Queue, Job } from 'bull';
+import { Worker, Job } from 'bullmq';
 import { REDIS_HOST, REDIS_PORT } from '../config';
 import { TelegramNotification } from '../types';
 import { Telegraf } from 'telegraf';
 
 /**
- * Сервис для работы с Redis Bull queue (получение уведомлений)
+ * Сервис для работы с Redis BullMQ queue (получение уведомлений)
  */
 export class RedisService {
-  private queue: Queue<TelegramNotification>;
+  private worker: Worker<TelegramNotification>;
   private bot: Telegraf;
   private onQueryComplete: (queryUid: string) => void;
 
@@ -15,32 +15,33 @@ export class RedisService {
     this.bot = bot;
     this.onQueryComplete = onQueryComplete;
 
+    const connection = {
+      host: REDIS_HOST,
+      port: REDIS_PORT,
+    };
+
     console.log(`[RedisService] Connecting to Redis at ${REDIS_HOST}:${REDIS_PORT}`);
 
-    // Подключаемся к очереди telegram-notifications
-    this.queue = new Bull<TelegramNotification>('telegram-notifications', {
-      redis: {
-        host: REDIS_HOST,
-        port: REDIS_PORT,
-        maxRetriesPerRequest: null,
-        enableReadyCheck: false
-      }
-    });
+    // Создаем Worker для обработки уведомлений
+    this.worker = new Worker<TelegramNotification>(
+      'telegram-notifications',
+      async (job: Job<TelegramNotification>) => {
+        await this.processNotification(job);
+      },
+      { connection }
+    );
 
-    // Регистрируем обработчик уведомлений
-    this.queue.process(this.processNotification.bind(this));
-
-    // Слушатели событий
-    this.queue.on('error', (error) => {
-      console.error('[RedisService] Queue error:', error);
-    });
-
-    this.queue.on('completed', (job) => {
+    // Слушатели событий Worker
+    this.worker.on('completed', (job) => {
       console.log(`[RedisService] Job ${job.id} completed successfully`);
     });
 
-    this.queue.on('failed', (job, error) => {
-      console.error(`[RedisService] Job ${job.id} failed:`, error.message);
+    this.worker.on('failed', (job, error) => {
+      console.error(`[RedisService] Job ${job?.id} failed:`, error.message);
+    });
+
+    this.worker.on('error', (error) => {
+      console.error('[RedisService] Worker error:', error);
     });
 
     console.log('[RedisService] Subscribed to telegram-notifications queue');
@@ -79,25 +80,20 @@ export class RedisService {
         await this.bot.telegram.sendMessage(chatId, message);
 
         console.log(`[RedisService] Success notification sent to chat ${chatId}`);
-
       } else if (status === 'failed') {
         // Отправляем сообщение об ошибке
         const message = errorMessage || 'Произошла ошибка при обработке запроса. Попробуйте еще раз.';
-        
-        await this.bot.telegram.sendMessage(
-          chatId,
-          `❌ ${message}`
-        );
+
+        await this.bot.telegram.sendMessage(chatId, `❌ ${message}`);
 
         console.log(`[RedisService] Error notification sent to chat ${chatId}`);
       }
 
       // Вызываем callback для очистки сессии и отмены таймера
       this.onQueryComplete(uid);
-
     } catch (error) {
       console.error(`[RedisService] Failed to send notification to chat ${chatId}:`, error);
-      throw error; // Пробросим ошибку для retry механизма Bull
+      throw error; // Пробросим ошибку для retry механизма BullMQ
     }
   }
 
@@ -106,8 +102,7 @@ export class RedisService {
    */
   async close(): Promise<void> {
     console.log('[RedisService] Closing Redis connection...');
-    await this.queue.close();
+    await this.worker.close();
     console.log('[RedisService] Redis connection closed');
   }
 }
-

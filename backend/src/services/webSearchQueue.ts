@@ -1,4 +1,12 @@
-import Bull, { Queue } from 'bull';
+import { Queue } from 'bullmq';
+
+/**
+ * Redis connection configuration
+ */
+const getConnection = () => ({
+  host: process.env.REDIS_HOST || 'localhost',
+  port: parseInt(process.env.REDIS_PORT || '6379', 10),
+});
 
 /**
  * Интерфейс для уведомления о веб-поиске в Telegram
@@ -13,48 +21,29 @@ export interface WebSearchNotification {
 }
 
 /**
- * Сервис для работы с очередью уведомлений о веб-поиске
+ * Сервис для работы с очередью уведомлений о веб-поиске (BullMQ)
  */
 export class WebSearchQueueService {
   private static instance: WebSearchQueueService;
   private queue: Queue<WebSearchNotification>;
 
   private constructor() {
-    const redisHost = process.env.REDIS_HOST || 'localhost';
-    const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
+    const connection = getConnection();
 
-    console.log(`[WebSearchQueue] Connecting to Redis at ${redisHost}:${redisPort}`);
+    console.log(`[WebSearchQueue] Connecting to Redis at ${connection.host}:${connection.port}`);
 
-    // Создаем очередь Bull для уведомлений о веб-поиске
-    this.queue = new Bull<WebSearchNotification>('telegram-web-search', {
-      redis: {
-        host: redisHost,
-        port: redisPort,
-        maxRetriesPerRequest: null,
-        enableReadyCheck: false
-      },
+    // Создаем очередь BullMQ для уведомлений о веб-поиске
+    this.queue = new Queue<WebSearchNotification>('telegram-web-search', {
+      connection,
       defaultJobOptions: {
         attempts: 3, // 3 попытки отправки уведомления
         removeOnComplete: true,
         removeOnFail: false,
         backoff: {
           type: 'exponential',
-          delay: 2000 // Задержка между попытками: 2s, 4s, 8s
-        }
-      }
-    });
-
-    // Слушатели событий
-    this.queue.on('error', (error) => {
-      console.error('[WebSearchQueue] Error:', error);
-    });
-
-    this.queue.on('completed', (job) => {
-      console.log(`[WebSearchQueue] Web search notification ${job.id} sent successfully`);
-    });
-
-    this.queue.on('failed', (job, error) => {
-      console.error(`[WebSearchQueue] Web search notification ${job.id} failed:`, error.message);
+          delay: 2000, // Задержка между попытками: 2s, 4s, 8s
+        },
+      },
     });
 
     console.log('[WebSearchQueue] Web search queue initialized');
@@ -71,18 +60,25 @@ export class WebSearchQueueService {
   }
 
   /**
+   * Возвращает конфигурацию подключения к Redis
+   */
+  static getConnection() {
+    return getConnection();
+  }
+
+  /**
    * Добавляет уведомление о веб-поиске в очередь
    */
   async addNotification(notification: WebSearchNotification): Promise<void> {
     console.log(`[WebSearchQueue] Adding web search notification for chat ${notification.chatId}, uid: ${notification.uid}, mode: ${notification.searchMode}`);
 
-    await this.queue.add(notification, {
-      jobId: `websearch-${notification.uid}-${Date.now()}` // Уникальный ID
+    await this.queue.add('websearch', notification, {
+      jobId: `websearch-${notification.uid}-${Date.now()}`, // Уникальный ID
     });
   }
 
   /**
-   * Получает очередь для регистрации процессора (используется в telegram-bot)
+   * Получает очередь (для статистики)
    */
   getQueue(): Queue<WebSearchNotification> {
     return this.queue;
