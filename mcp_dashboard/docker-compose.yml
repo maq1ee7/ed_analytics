@@ -1,0 +1,36 @@
+# Standalone-деплой только MCP Dashboard (без остальных сервисов ed_analytics).
+# Запуск на сервере: docker compose -f docker-compose.yml up -d
+
+version: '3.8'
+
+services:
+  mcp-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp_dashboard_prod
+    init: true  # перехват зомби-процессов Chromium
+    ports:
+      - "${MCP_DASHBOARD_PORT:-3100}:3100"
+    environment:
+      - NODE_ENV=production
+      - PORT=3100
+      - BASE_URL=${MCP_DASHBOARD_BASE_URL:-http://${SERVER_IP:-localhost}:3100}
+      - DATABASE_PATH=/data/dashboards.db
+    volumes:
+      - mcp_dashboard_data:/data
+    restart: unless-stopped
+
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: mcp_dashboard_dozzle
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "${DOZZLE_PORT:-9999}:8080"
+    environment:
+      - DOZZLE_NO_ANALYTICS=true
+    restart: unless-stopped
+
+volumes:
+  mcp_dashboard_data:
