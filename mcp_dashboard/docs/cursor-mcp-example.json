@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "mcp-dashboard": {
+      "url": "http://130.193.46.4:3100/mcp"
+    }
+  }
+}

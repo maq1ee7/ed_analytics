@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Интерактивная карта России</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #f3f4f6; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    h2 { margin: 0 0 8px; font-size: 1.5rem; color: #111; }
+    .subtitle { color: #6b7280; margin-bottom: 16px; }
+    .toolbar { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+    .year-nav { display: flex; align-items: center; gap: 8px; }
+    .year-nav button { padding: 8px 12px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; cursor: pointer; }
+    .year-nav button:hover { background: #f3f4f6; }
+    .year-value { font-weight: 600; min-width: 48px; text-align: center; }
+    .content { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+    .legend { flex-shrink: 0; background: #f9fafb; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; }
+    .legend h4 { margin: 0 0 12px; font-size: 0.875rem; color: #374151; }
+    .legend-item { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; font-size: 12px; color: #4b5563; }
+    .legend-item .swatch { width: 32px; height: 24px; border-radius: 4px; border: 1px solid #d1d5db; flex-shrink: 0; }
+    .map-wrap { flex: 1; min-width: 400px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.1)); }
+    .map-wrap svg { width: 100%; height: auto; }
+    .map-wrap path { cursor: pointer; transition: fill 0.15s; }
+    .error { color: #dc2626; padding: 16px; }
+    .loading { color: #6b7280; padding: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Интерактивная карта России</h2>
+    <p class="subtitle">Данные по регионам</p>
+    <div id="root">
+      <div class="loading">Загрузка…</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const root = document.getElementById('root');
+      const dashboardId = window.DASHBOARD_ID || (function () {
+        const m = window.location.pathname.match(/\/dashboard\/([^/]+)/);
+        return m ? m[1] : null;
+      })();
+
+      function showError(msg) {
+        root.innerHTML = '<div class="error">' + escapeHtml(msg) + '</div>';
+        document.body.dataset.ready = 'true';
+      }
+
+      function escapeHtml(s) {
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+
+      if (!dashboardId) {
+        showError('Не указан ID дашборда в URL.');
+        return;
+      }
+
+      const base = window.location.origin;
+      Promise.all([
+        fetch(base + '/api/dashboard/' + encodeURIComponent(dashboardId)).then(r => r.ok ? r.json() : Promise.reject(new Error('Дашборд не найден'))),
+        fetch(base + '/data/regions.json').then(r => r.json()),
+        fetch(base + '/data/regionCoordinates.json').then(r => r.json())
+      ]).then(function ([dashboard, regions, regionCoordinates]) {
+        const data = dashboard.payload || dashboard;
+        if (!data.years || data.years.length === 0) {
+          showError('Нет данных для отображения.');
+          return;
+        }
+
+        const regionCodes = Object.keys(regionCoordinates);
+        const years = data.years.map(y => y.year);
+        let currentYearIndex = 0;
+
+        function getQuantiles(values) {
+          const sorted = values.slice().sort((a, b) => a - b);
+          if (sorted.length === 0) return [0,0,0,0,0,0,0,0];
+          const getQ = (p) => {
+            const i = Math.ceil((sorted.length * p) / 100) - 1;
+            return sorted[Math.max(0, Math.min(i, sorted.length - 1))];
+          };
+          return [getQ(12.5), getQ(25), getQ(37.5), getQ(50), getQ(62.5), getQ(75), getQ(87.5), getQ(100)];
+        }
+
+        const allYearsQuantiles = data.years.map(yd => getQuantiles(yd.regions.map(r => r.value)));
+        const quantiles = allYearsQuantiles[currentYearIndex];
+        const valueMap = {};
+        data.years[currentYearIndex].regions.forEach(r => { valueMap[r.regionCode] = r.value; });
+
+        function getColor(value) {
+          if (value <= quantiles[0]) return '#1e3a8a';
+          if (value <= quantiles[1]) return '#1e40af';
+          if (value <= quantiles[2]) return '#3b82f6';
+          if (value <= quantiles[3]) return '#06b6d4';
+          if (value <= quantiles[4]) return '#10b981';
+          if (value <= quantiles[5]) return '#84cc16';
+          if (value <= quantiles[6]) return '#f59e0b';
+          if (value <= quantiles[7]) return '#ef4444';
+          return '#dc2626';
+        }
+
+        function formatNum(n) {
+          return n.toLocaleString('ru-RU', { maximumFractionDigits: 1 });
+        }
+
+        function render() {
+          const yearData = data.years[currentYearIndex];
+          const qu = allYearsQuantiles[currentYearIndex];
+          const vMap = {};
+          yearData.regions.forEach(r => { vMap[r.regionCode] = r.value; });
+
+          const legendItems = [
+            { color: '#1e3a8a', label: '≤ ' + formatNum(qu[0]), range: '0-12.5%' },
+            { color: '#1e40af', label: '≤ ' + formatNum(qu[1]), range: '12.5-25%' },
+            { color: '#3b82f6', label: '≤ ' + formatNum(qu[2]), range: '25-37.5%' },
+            { color: '#06b6d4', label: '≤ ' + formatNum(qu[3]), range: '37.5-50%' },
+            { color: '#10b981', label: '≤ ' + formatNum(qu[4]), range: '50-62.5%' },
+            { color: '#84cc16', label: '≤ ' + formatNum(qu[5]), range: '62.5-75%' },
+            { color: '#f59e0b', label: '≤ ' + formatNum(qu[6]), range: '75-87.5%' },
+            { color: '#ef4444', label: '≤ ' + formatNum(qu[7]), range: '87.5-100%' }
+          ];
+
+          const legendHtml = '<div class="legend"><h4>Легенда</h4>' + legendItems.map(function (item) {
+            return '<div class="legend-item"><div class="swatch" style="background:' + item.color + '"></div><div><div class="font-medium">' + escapeHtml(item.label) + '</div><div style="color:#9ca3af">' + item.range + '</div></div></div>';
+          }).join('') + '</div>';
+
+          const pathsHtml = regionCodes.map(function (code) {
+            const value = vMap[code] ?? 0;
+            const fill = getColor(value);
+            const title = (regions[code] && regions[code].title) ? regions[code].title : code;
+            return '<path d="' + escapeHtml(regionCoordinates[code] || '') + '" fill="' + fill + '" stroke="#fff" stroke-width="1" stroke-linejoin="round" data-code="' + escapeHtml(code) + '" title="' + escapeHtml(title) + ' ' + formatNum(value) + '"/>';
+          }).join('');
+
+          const yearValue = years[currentYearIndex];
+          root.innerHTML =
+            '<div class="toolbar">' +
+              '<div class="year-nav">' +
+                '<button type="button" id="btn-prev" aria-label="Предыдущий год">‹</button>' +
+                '<span class="year-value" id="year-value">' + yearValue + '</span>' +
+                '<button type="button" id="btn-next" aria-label="Следующий год">›</button>' +
+              '</div>' +
+            '</div>' +
+            '<div class="content">' +
+              legendHtml +
+              '<div class="map-wrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" class="w-full h-auto">' + pathsHtml + '</svg></div>' +
+            '</div>' +
+            '<p style="margin-top:16px;text-align:center;color:#6b7280;font-size:14px">Показаны данные по ' + yearData.regions.length + ' регионам за ' + yearValue + ' год</p>';
+
+          document.getElementById('btn-prev').onclick = function () {
+            currentYearIndex = currentYearIndex === 0 ? years.length - 1 : currentYearIndex - 1;
+            render();
+          };
+          document.getElementById('btn-next').onclick = function () {
+            currentYearIndex = currentYearIndex === years.length - 1 ? 0 : currentYearIndex + 1;
+            render();
+          };
+        }
+
+        render();
+        document.body.dataset.ready = 'true';
+      }).catch(function (err) {
+        showError(err.message || 'Ошибка загрузки данных.');
+      });
+    })();
+  </script>
+</body>
+</html>
