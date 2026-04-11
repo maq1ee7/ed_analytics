@@ -1,0 +1,14 @@
+{
+  "data": {
+    "years": [
+      {
+        "year": 2020,
+        "regions": [
+          { "regionCode": "RU-TA", "value": 0 },
+          { "regionCode": "RU-CHE", "value": -15.5 },
+          { "regionCode": "RU-YAN", "value": 999999999 }
+        ]
+      }
+    ]
+  }
+}

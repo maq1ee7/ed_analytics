@@ -1,0 +1,13 @@
+{
+  "data": {
+    "years": [
+      {
+        "year": 2021,
+        "regions": [
+          { "regionCode": "RU-KDA", "value": 10 },
+          { "regionCode": "RU-KDA", "value": 20 }
+        ]
+      }
+    ]
+  }
+}

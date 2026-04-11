@@ -1,0 +1,21 @@
+{
+  "data": {
+    "years": [
+      {
+        "year": 2022,
+        "regions": [
+          { "regionCode": "RU-SPE", "value": 12 },
+          { "regionCode": "RU-LEN", "value": 7 }
+        ]
+      },
+      {
+        "year": 2023,
+        "regions": [
+          { "regionCode": "RU-SPE", "value": 18 },
+          { "regionCode": "RU-LEN", "value": 9 },
+          { "regionCode": "RU-MOW", "value": 25 }
+        ]
+      }
+    ]
+  }
+}
