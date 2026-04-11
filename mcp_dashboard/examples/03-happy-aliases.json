@@ -1,0 +1,14 @@
+{
+  "data": {
+    "years": [
+      {
+        "year": 2023,
+        "regions": [
+          { "regionCode": "Югра", "value": 100 },
+          { "regionCode": "Москва", "value": 200 },
+          { "regionCode": "Питер", "value": 150 }
+        ]
+      }
+    ]
+  }
+}

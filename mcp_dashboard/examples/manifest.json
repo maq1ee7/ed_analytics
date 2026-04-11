@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "description": "Фикстуры для ручной или агентной проверки MCP-инструмента create_russia_map. Каждый *.json — полный аргумент вызова: { \"data\": { \"years\": ... } }.",
+  "tool": "create_russia_map",
+  "cases": [
+    {
+      "id": "01-happy-minimal",
+      "file": "01-happy-minimal.json",
+      "expect": { "outcome": "success" },
+      "notes": "Минимальный валидный набор: один год, один регион."
+    },
+    {
+      "id": "02-happy-multi-year",
+      "file": "02-happy-multi-year.json",
+      "expect": { "outcome": "success" },
+      "notes": "Два года, разные регионы — слайдер года на карте."
+    },
+    {
+      "id": "03-happy-aliases",
+      "file": "03-happy-aliases.json",
+      "expect": { "outcome": "success" },
+      "notes": "Текстовые алиасы (Югра, Москва, Питер) → канонические коды."
+    },
+    {
+      "id": "04-happy-case-insensitive",
+      "file": "04-happy-case-insensitive.json",
+      "expect": { "outcome": "success" },
+      "notes": "Код региона в нижнем регистре."
+    },
+    {
+      "id": "05-edge-values",
+      "file": "05-edge-values.json",
+      "expect": { "outcome": "success" },
+      "notes": "Ноль, отрицательное, большое число — легенда и масштаб."
+    },
+    {
+      "id": "06-edge-duplicate-region-same-year",
+      "file": "06-edge-duplicate-region-same-year.json",
+      "expect": { "outcome": "success" },
+      "notes": "Дубликат одного региона в одном году (поведение UI/данных)."
+    },
+    {
+      "id": "07-error-unknown-codes",
+      "file": "07-error-unknown-codes.json",
+      "expect": {
+        "outcome": "tool_error",
+        "containsText": ["unknownRegionCodes", "RU-ZZZ99"]
+      },
+      "notes": "Неизвестный ISO-код — RussiaMapRegionValidationError, подсказки в possibleMatches."
+    },
+    {
+      "id": "08-error-empty-years",
+      "file": "08-error-empty-years.json",
+      "expect": {
+        "outcome": "tool_error",
+        "containsText": ["Неверный формат", "years"]
+      },
+      "notes": "Пустой массив years — отклоняется до рендера."
+    },
+    {
+      "id": "09-error-zod-missing-year",
+      "file": "09-error-zod-missing-year.json",
+      "expect": { "outcome": "tool_error" },
+      "notes": "Нарушение схемы Zod (нет поля year у элемента years[])."
+    }
+  ]
+}

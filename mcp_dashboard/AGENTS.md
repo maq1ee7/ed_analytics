@@ -55,6 +55,16 @@
 | `src/types.ts` | `RussiaMapChartData` и связанные типы (совместимость с форматом из ed_analytics) |
 | `public/map.html` | UI карты; ожидается `body[data-ready="true"]` после загрузки данных |
 | `data/regions.json`, `data/regionCoordinates.json` | Гео и метаданные регионов для карты |
+| `examples/`, `examples/manifest.json` | JSON-фикстуры для `create_russia_map` (успех, edge cases, ожидаемые ошибки); реестр кейсов в manifest |
+| `.cursor/skills/verify-mcp-dashboard/SKILL.md` | Инструкция агенту: прогон фикстур через MCP; модель задаётся в UI чата Cursor, не в skill |
+
+---
+
+## Тестовые фикстуры MCP
+
+Каталог **`examples/`** содержит готовые аргументы вызова (объект с полем **`data`**) и **`manifest.json`** с описанием кейсов и ожидаемого исхода (`success` / `tool_error`). Используйте для регрессии после правок валидации регионов, карты или рендера.
+
+Повторяемый сценарий проверки в Cursor описан в skill **`verify-mcp-dashboard`** (путь в таблице выше).
 
 ---
 
@@ -107,7 +117,7 @@ npx tsx scripts/export-regions-for-mcp-dashboard.ts
 | Задача | Куда смотреть |
 |--------|----------------|
 | Новый MCP tool / resource | `src/index.ts` (`McpServer.registerTool` / `registerResource`), при необходимости вынести в `src/tools/` |
-| Изменить формат входных данных карты | Zod в `index.ts`, `types.ts`, `createRussiaMap.ts`, валидация в `russiaRegionCatalog.ts` |
+| Изменить формат входных данных карты | Zod в `index.ts`, `types.ts`, `createRussiaMap.ts`, валидация в `russiaRegionCatalog.ts`; обновить `examples/` и `manifest.json` |
 | Правки UI карты | `public/map.html`, стили в том же файле; убедиться, что **`data-ready`** выставляется до показа ошибки/успеха (иначе зависнет `render.ts`) |
 | Таймауты / скриншот | `src/render.ts` (`DEFAULT_TIMEOUT_MS`, viewport) |
 | Поведение MCP по HTTP | `mcpTransport.ts`, заголовок **`mcp-session-id`**, парсинг тела для `initialize` |

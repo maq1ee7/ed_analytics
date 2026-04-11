@@ -1,0 +1,10 @@
+{
+  "data": {
+    "years": [
+      {
+        "year": 2024,
+        "regions": [{ "regionCode": "RU-MOW", "value": 42 }]
+      }
+    ]
+  }
+}

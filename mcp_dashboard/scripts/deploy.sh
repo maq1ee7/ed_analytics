@@ -173,7 +173,9 @@ ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_IP" "
     else
         DC='docker-compose'
     fi
-    \$DC -f docker-compose.yml down 2>/dev/null || true
+    # down не трогает контейнеры с тем же container_name, созданные другим compose-проектом
+    \$DC -f docker-compose.yml down --remove-orphans 2>/dev/null || true
+    docker rm -f mcp_dashboard_prod mcp_dashboard_dozzle 2>/dev/null || true
     \$DC -f docker-compose.yml up -d
     echo ''
     echo '📊 Статус:'
