@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Фикстуры для ручной или агентной проверки MCP-инструмента create_russia_map. Каждый *.json — полный аргумент вызова: { \"data\": { \"years\": ... } }.",
+  "description": "Фикстуры для ручной или агентной проверки MCP-инструмента create_russia_map. Каждый *.json — полный аргумент вызова: { \"data\": { \"title\": \"…\", \"years\": ... } }.",
   "tool": "create_russia_map",
   "cases": [
     {
@@ -13,7 +13,7 @@
       "id": "02-happy-multi-year",
       "file": "02-happy-multi-year.json",
       "expect": { "outcome": "success" },
-      "notes": "Два года, разные регионы — слайдер года на карте."
+      "notes": "Три года, сильный сдвиг лидера по значению — три PNG и заметная смена карты по слайдеру."
     },
     {
       "id": "03-happy-aliases",

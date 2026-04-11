@@ -13,6 +13,8 @@ export interface RussiaMapYearData {
 }
 
 export interface RussiaMapChartData {
+  /** Человекочитаемый заголовок показателя (что отображает карта). */
+  title: string;
   years: RussiaMapYearData[];
 }
 

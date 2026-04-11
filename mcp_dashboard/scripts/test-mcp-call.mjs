@@ -11,28 +11,7 @@
  */
 
 import { strict as assert } from 'node:assert';
-
-/** @param {string} s */
-const trimUrl = (s) => s.replace(/\/$/, '');
-
-function resolveHttpBaseUrl() {
-  const e = process.env;
-  if (e.MCP_BASE_URL?.trim()) {
-    return { url: trimUrl(e.MCP_BASE_URL.trim()), from: 'MCP_BASE_URL' };
-  }
-  if (e.MCP_DASHBOARD_BASE_URL?.trim()) {
-    return { url: trimUrl(e.MCP_DASHBOARD_BASE_URL.trim()), from: 'MCP_DASHBOARD_BASE_URL' };
-  }
-  const ip = e.SERVER_IP?.trim();
-  if (ip) {
-    const port = (e.MCP_DASHBOARD_PORT || e.PORT || '3100').toString().trim();
-    return { url: `http://${ip}:${port}`, from: 'SERVER_IP+PORT' };
-  }
-  if (e.BASE_URL?.trim()) {
-    return { url: trimUrl(e.BASE_URL.trim()), from: 'BASE_URL' };
-  }
-  return { url: 'http://localhost:3100', from: 'default (нет MCP_BASE_URL / SERVER_IP / … в env)' };
-}
+import { mcpRequest, resolveHttpBaseUrl } from './mcp-jsonrpc.mjs';
 
 const { url: MCP_BASE_URL, from: baseUrlSource } = resolveHttpBaseUrl();
 const MCP_ENDPOINT = `${MCP_BASE_URL}/mcp`;
@@ -40,6 +19,7 @@ const HTTP_ORIGIN = MCP_BASE_URL;
 
 /** Эталон: только канонические ISO-коды (как после normalize на сервере). */
 const MOCK_DATA = {
+  title: 'E2E эталон',
   years: [
     {
       year: 2023,
@@ -61,6 +41,7 @@ const MOCK_DATA = {
 };
 
 const sortChartDataForCompare = (data) => ({
+  title: data.title,
   years: [...data.years]
     .sort((a, b) => a.year - b.year)
     .map((y) => ({
@@ -72,81 +53,6 @@ const sortChartDataForCompare = (data) => ({
 const EXPECTED_PAYLOAD = sortChartDataForCompare(MOCK_DATA);
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-
-/**
- * Streamable HTTP может вернуть один JSON или SSE (text/event-stream) с строками `data: {...}`.
- * Долгий tools/call (create_russia_map + Puppeteer) часто приходит как SSE — один JSON.parse на всё тело ломается.
- */
-function parseJsonRpcFromMcpBody(text) {
-  const t = (text ?? '').trim();
-  if (!t) return null;
-
-  try {
-    const j = JSON.parse(t);
-    if (j && typeof j === 'object' && ('jsonrpc' in j || 'result' in j || 'error' in j)) {
-      return j;
-    }
-  } catch {
-    /* не один цельный JSON */
-  }
-
-  const fromDataLines = [];
-  for (const line of text.split(/\r?\n/)) {
-    const m = /^\s*data:\s*(.*)$/i.exec(line);
-    if (!m) continue;
-    const payload = m[1].trim();
-    if (!payload || payload === '[DONE]') continue;
-    try {
-      fromDataLines.push(JSON.parse(payload));
-    } catch {
-      /* ignore */
-    }
-  }
-  if (fromDataLines.length > 0) {
-    for (let i = fromDataLines.length - 1; i >= 0; i--) {
-      const j = fromDataLines[i];
-      if (j && typeof j === 'object' && j.result !== undefined) return j;
-      if (j && typeof j === 'object' && j.error !== undefined) return j;
-    }
-    return fromDataLines[fromDataLines.length - 1];
-  }
-
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  for (let i = lines.length - 1; i >= 0; i--) {
-    try {
-      const j = JSON.parse(lines[i]);
-      if (j && typeof j === 'object' && (j.result !== undefined || j.error !== undefined)) {
-        return j;
-      }
-    } catch {
-      /* ignore */
-    }
-  }
-
-  return null;
-}
-
-async function mcpRequest(sessionId, method, params) {
-  const body = {
-    jsonrpc: '2.0',
-    id: 1,
-    method,
-    params,
-  };
-  const headers = {
-    'Content-Type': 'application/json',
-    Accept: 'application/json, text/event-stream',
-    ...(sessionId ? { 'mcp-session-id': sessionId } : {}),
-  };
-  const response = await fetch(MCP_ENDPOINT, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
-  const text = await response.text();
-  const rpc = parseJsonRpcFromMcpBody(text);
-  return { response, text, rpc };
-}
 
 async function main() {
   console.log('Базовый URL:', MCP_BASE_URL, `(источник: ${baseUrlSource})`);
@@ -164,7 +70,7 @@ async function main() {
     protocolVersion: '2024-11-05',
     capabilities: {},
     clientInfo: { name: 'test-mcp-call', version: '1.0.0' },
-  });
+  }, { timeoutMs: 30_000 });
 
   const sessionId =
     initRes.headers.get('mcp-session-id') ?? initRes.headers.get('Mcp-Session-Id');
@@ -176,10 +82,16 @@ async function main() {
   console.log('Сессия установлена:', sessionId.slice(0, 8) + '…');
 
   console.log('Вызов create_russia_map...');
-  const { response: callRes, text: callText, rpc: callRpc } = await mcpRequest(sessionId, 'tools/call', {
-    name: 'create_russia_map',
-    arguments: { data: MOCK_DATA },
-  });
+  /** create_russia_map: несколько проходов Puppeteer — длинный таймаут. */
+  const { response: callRes, text: callText, rpc: callRpc } = await mcpRequest(
+    sessionId,
+    'tools/call',
+    {
+      name: 'create_russia_map',
+      arguments: { data: MOCK_DATA },
+    },
+    { timeoutMs: 300_000 }
+  );
 
   assert.ok(callRes.ok, `tools/call: HTTP ${callRes.status} ${callText?.slice(0, 400) ?? ''}`);
 
@@ -195,8 +107,7 @@ async function main() {
 
   let dashboardId;
   let dashboardUrlFromMcp;
-  let imageBase64;
-  let imageMime;
+  const imageBlocks = [];
 
   for (const item of content) {
     if (item.type === 'text' && item.text) {
@@ -209,22 +120,28 @@ async function main() {
       }
     }
     if (item.type === 'image' && item.data) {
-      imageBase64 = item.data;
-      imageMime = item.mimeType;
+      imageBlocks.push({ data: item.data, mimeType: item.mimeType });
     }
   }
 
   assert.ok(dashboardId, 'В ответе MCP нет dashboardId в JSON-тексте');
-  assert.ok(imageBase64 && imageBase64.length > 500, 'Нет PNG или слишком короткий base64');
-  assert.equal(imageMime, 'image/png', 'Ожидался mimeType image/png для превью');
-
-  const pngBuf = Buffer.from(imageBase64, 'base64');
-  assert.ok(pngBuf.length >= PNG_MAGIC.length, 'Декод base64 PNG: буфер слишком мал');
-  assert.ok(
-    pngBuf.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC),
-    'Декод base64: нет сигнатуры PNG'
+  assert.equal(
+    imageBlocks.length,
+    MOCK_DATA.years.length,
+    `Ожидалось ${MOCK_DATA.years.length} PNG (по числу лет), получено ${imageBlocks.length}`
   );
-  console.log('MCP: dashboardId, PNG base64 и сигнатура PNG — ок');
+  for (let i = 0; i < imageBlocks.length; i++) {
+    const { data: imageBase64, mimeType: imageMime } = imageBlocks[i];
+    assert.ok(imageBase64 && imageBase64.length > 500, `Нет PNG #${i + 1} или слишком короткий base64`);
+    assert.equal(imageMime, 'image/png', `Ожидался mimeType image/png для снимка #${i + 1}`);
+    const pngBuf = Buffer.from(imageBase64, 'base64');
+    assert.ok(pngBuf.length >= PNG_MAGIC.length, `Декод base64 PNG #${i + 1}: буфер слишком мал`);
+    assert.ok(
+      pngBuf.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC),
+      `Декод base64 #${i + 1}: нет сигнатуры PNG`
+    );
+  }
+  console.log('MCP: dashboardId, PNG base64 (все годы) и сигнатуры PNG — ок');
 
   if (dashboardUrlFromMcp) {
     try {

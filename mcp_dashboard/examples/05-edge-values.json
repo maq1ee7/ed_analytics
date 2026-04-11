@@ -1,12 +1,14 @@
 {
   "data": {
+    "title": "Краевые значения (ноль, отриц., большое число)",
     "years": [
       {
         "year": 2020,
         "regions": [
           { "regionCode": "RU-TA", "value": 0 },
           { "regionCode": "RU-CHE", "value": -15.5 },
-          { "regionCode": "RU-YAN", "value": 999999999 }
+          { "regionCode": "RU-YAN", "value": 999999999 },
+          { "regionCode": "RU-MOW", "value": 0.0001 }
         ]
       }
     ]

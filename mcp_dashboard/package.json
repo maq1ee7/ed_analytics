@@ -10,7 +10,8 @@
     "dev": "tsx src/index.ts",
     "prepare:data": "echo 'Region data is in data/. To refresh, run from repo root: npx tsx scripts/export-regions-for-mcp-dashboard.ts'",
     "test": "bash scripts/test.sh",
-    "e2e:mcp": "bash scripts/test.sh"
+    "e2e:mcp": "bash scripts/test.sh",
+    "verify:examples": "bash scripts/verify-examples.sh"
   },
   "engines": {
     "node": ">=18"

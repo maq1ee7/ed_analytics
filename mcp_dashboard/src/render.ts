@@ -1,6 +1,7 @@
 import puppeteer, { Browser } from 'puppeteer';
 
-const DEFAULT_TIMEOUT_MS = 25000;
+/** По умолчанию 3 мин: медленная сеть / удалённый BASE_URL, загрузка страницы и скриншот в Puppeteer. */
+const DEFAULT_TIMEOUT_MS = 60_000;
 
 let browser: Browser | null = null;
 
@@ -10,7 +11,7 @@ export async function getBrowser(): Promise<Browser> {
     browser = await puppeteer.launch({
       headless: true,
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-      protocolTimeout: 60000,
+      protocolTimeout: DEFAULT_TIMEOUT_MS,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -45,11 +46,12 @@ function urlForGoto(dashboardUrl: string): string {
  */
 export async function renderDashboardToPng(
   dashboardUrl: string,
-  options?: { width?: number; height?: number; timeoutMs?: number }
+  options?: { width?: number; height?: number; timeoutMs?: number; fullPage?: boolean }
 ): Promise<string> {
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const width = options?.width ?? 1200;
   const height = options?.height ?? 800;
+  const fullPage = options?.fullPage ?? false;
 
   const run = async (): Promise<string> => {
     console.error('[mcp-dashboard] [render] renderDashboardToPng start', dashboardUrl);
@@ -73,7 +75,7 @@ export async function renderDashboardToPng(
       );
       console.error('[mcp-dashboard] [render] data-ready, делаем скриншот');
       await new Promise((r) => setTimeout(r, 300));
-      const buffer = await page.screenshot({ type: 'png', fullPage: false });
+      const buffer = await page.screenshot({ type: 'png', fullPage });
       console.error('[mcp-dashboard] [render] скриншот готов, длина base64:', Buffer.from(buffer).toString('base64').length);
       return Buffer.from(buffer).toString('base64');
     } finally {
