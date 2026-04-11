@@ -17,4 +17,4 @@ if [ -n "$REPO_ROOT" ] && [ -f "$REPO_ROOT/.env" ]; then
   export $(grep -v '^#' "$REPO_ROOT/.env" | grep -v '^$' | xargs)
 fi
 
-exec node scripts/test-mcp-call.mjs
+exec node scripts/mjs/test-mcp-call.mjs

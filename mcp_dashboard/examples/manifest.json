@@ -62,6 +62,30 @@
       "file": "09-error-zod-missing-year.json",
       "expect": { "outcome": "tool_error" },
       "notes": "Нарушение схемы Zod (нет поля year у элемента years[])."
+    },
+    {
+      "id": "10-happy-total-aggregate",
+      "file": "10-happy-total-aggregate.json",
+      "expect": { "outcome": "success" },
+      "notes": "Поле total: остаток на неперечисленные контуры; в payload — restAggregateValue после нормализации."
+    },
+    {
+      "id": "11-error-total-less-than-sum",
+      "file": "11-error-total-less-than-sum.json",
+      "expect": {
+        "outcome": "tool_error",
+        "containsText": ["меньше суммы"]
+      },
+      "notes": "total меньше суммы по перечисленным регионам (последнее значение на код)."
+    },
+    {
+      "id": "12-error-total-excess-full-map",
+      "file": "12-error-total-excess-full-map.json",
+      "expect": {
+        "outcome": "tool_error",
+        "containsText": ["излишек"]
+      },
+      "notes": "Все контуры карты перечислены, но total больше суммы — некуда отнести излишек."
     }
   ]
 }

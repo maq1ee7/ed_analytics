@@ -3,7 +3,7 @@
  * Прогон examples/manifest.json против живого MCP (HTTP Streamable), без Cursor.
  * Те же проверки, что ожидает skill verify-mcp-dashboard.
  *
- *   MCP_BASE_URL=http://хост:3100 node scripts/verify-examples-mcp.mjs
+ *   MCP_BASE_URL=http://хост:3100 node scripts/mjs/verify-examples-mcp.mjs
  *   npm run verify:examples
  *
  * Подхватывает .env через shell (см. scripts/verify-examples.sh) или задайте MCP_BASE_URL вручную.
@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { mcpRequest, resolveHttpBaseUrl } from './mcp-jsonrpc.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, '..');
+const ROOT = join(__dirname, '..', '..');
 
 const INIT_TIMEOUT_MS = 30_000;
 /** Несколько лет = несколько скриншотов Puppeteer подряд. */

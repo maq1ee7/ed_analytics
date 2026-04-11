@@ -32,7 +32,7 @@
 
 ## Архитектура потока данных
 
-1. Клиент вызывает **`create_russia_map`** с полем **`data`**: `{ years: [ { year, regions: [ { regionCode, value } ] } ] }`.
+1. Клиент вызывает **`create_russia_map`** с полем **`data`**: `{ title, years: [ { year, regions: [ { regionCode, value } ], total?: number } ] }`. Опционально **`total`** на год: известная сумма по всем контурам карты (`data/regionCoordinates.json`); остаток после суммы перечисленных (последнее значение на код при дубликатах) задаёт агрегат **«остальные регионы»** — в payload **`restAggregateValue`**, если остаток > 0 и есть неперечисленные субъекты.
 2. **`createRussiaMap`** (`src/tools/createRussiaMap.ts`): валидация кодов через `russiaRegionCatalog` → `saveDashboard` в SQLite → сборка **`dashboardUrl`** из `BASE_URL` → **`renderDashboardToPng(dashboardUrl)`** (Puppeteer открывает страницу и ждёт `document.body.dataset.ready === 'true'`).
 3. Браузерная страница — **`public/map.html`**: загружает данные с **`/api/dashboard/:id`**, рисует карту; выставляет `data-ready` для Puppeteer.
 
@@ -51,7 +51,7 @@
 | `src/tools/createRussiaMap.ts` | Бизнес-логика карты: валидация, сохранение, URL, вызов рендера |
 | `src/db.ts` | SQLite: таблица `dashboards` (`id`, `type`, `payload`, `created_at`) |
 | `src/render.ts` | Puppeteer: общий браузер, `goto` (для localhost предпочитает `127.0.0.1`), скриншот |
-| `src/russiaRegionCatalog.ts` | ISO 3166-2:RU, алиасы, `RussiaMapRegionValidationError`, JSON для resource/tool |
+| `src/russiaRegionCatalog.ts` | ISO 3166-2:RU, алиасы, `RussiaMapRegionValidationError`, `RussiaMapTotalValidationError`, нормализация `total` / `restAggregateValue`, JSON для resource/tool |
 | `src/types.ts` | `RussiaMapChartData` и связанные типы (совместимость с форматом из ed_analytics) |
 | `public/map.html` | UI карты; ожидается `body[data-ready="true"]` после загрузки данных |
 | `data/regions.json`, `data/regionCoordinates.json` | Гео и метаданные регионов для карты |
@@ -72,7 +72,8 @@
 
 - **Коды регионов:** ISO **3166-2:RU** (`RU-MOW`, `RU-SPE`, …). В `russiaRegionCatalog` есть нормализация и алиасы (ХМАО, Югра и т.д.).
 - **Ошибки неизвестных кодов:** класс `RussiaMapRegionValidationError` — в ответ MCP попадают `unknownRegionCodes` и `possibleMatches` (подсказки по расстоянию Левенштейна).
-- **Формат `data`:** см. README и Zod-схему в `src/index.ts`; поле верхнего уровня при вызове инструмента — **`data`**, не корневой объект без обёртки.
+- **`total` у года (опционально):** множество контуров карты = ключи `data/regionCoordinates.json` (совпадает со справочником кодов). Сумма по перечисленным — по последнему значению на код; остаток `total − сумма` — один агрегат на все неперечисленные контуры (`restAggregateValue` в payload, если остаток &gt; 0). Несогласованный `total` → `RussiaMapTotalValidationError` (текст в ответе MCP).
+- **Формат `data`:** см. README и Zod-схему в `src/index.ts`; поле верхнего уровня при вызове инструмента — **`data`**, не корневой объект без обёртки. Примеры с `total`: `examples/10-happy-total-aggregate.json`, ошибки — `11`, `12` в том же каталоге.
 
 Типы дашборда в БД сейчас: **`russia_map`** (`StoredDashboard` в `types.ts`).
 

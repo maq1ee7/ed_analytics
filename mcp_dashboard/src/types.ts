@@ -10,6 +10,16 @@ export interface RussiaMapRegionData {
 export interface RussiaMapYearData {
   year: number;
   regions: RussiaMapRegionData[];
+  /**
+   * Опционально: известная сумма показателя по всем субъектам, для которых на карте есть контур
+   * (множество кодов совпадает с ключами `data/regionCoordinates.json`).
+   */
+  total?: number;
+  /**
+   * После нормализации: остаток `total − сумма(перечисленные)` для неперечисленных субъектов карты
+   * (одно число на все такие регионы). Только если остаток > 0 и есть неперечисленные контуры.
+   */
+  restAggregateValue?: number;
 }
 
 export interface RussiaMapChartData {
