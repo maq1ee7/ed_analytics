@@ -54,14 +54,47 @@
     .val-hot { color: #dc2626; font-weight: 600; }
     .val-warm { color: #16a34a; font-weight: 600; }
     .val-cool { color: #2563eb; font-weight: 600; }
+    .region-legend-wrap {
+      margin-top: 20px;
+      width: 100%;
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .region-legend-wrap h3 {
+      font-size: 0.875rem;
+      color: #374151;
+      margin: 0 0 12px;
+      font-weight: 600;
+    }
+    .region-legend {
+      column-count: 4;
+      column-gap: 28px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #374151;
+    }
+    @media (max-width: 1000px) {
+      .region-legend { column-count: 3; }
+    }
+    @media (max-width: 700px) {
+      .region-legend { column-count: 2; }
+    }
+    .region-legend-row {
+      break-inside: avoid;
+      margin-bottom: 5px;
+      display: block;
+    }
+    .region-legend-name { font-weight: 500; }
+    .region-legend-sep { color: #9ca3af; }
+    .region-legend-val { font-variant-numeric: tabular-nums; }
     .error { color: #dc2626; padding: 16px; }
     .loading { color: #6b7280; padding: 16px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Интерактивная карта России</h2>
-    <p class="subtitle">Наведите курсор на регион для подробной информации (как в основном дашборде).</p>
+    <h2 id="map-heading">Интерактивная карта России</h2>
+    <p id="map-subtitle" class="subtitle">Наведите курсор на регион для подробной информации (как в основном дашборде).</p>
     <div id="root">
       <div class="loading">Загрузка…</div>
     </div>
@@ -69,6 +102,8 @@
   <script>
     (function () {
       const root = document.getElementById('root');
+      const headingEl = document.getElementById('map-heading');
+      const subtitleEl = document.getElementById('map-subtitle');
       const dashboardId = window.DASHBOARD_ID || (function () {
         const m = window.location.pathname.match(/\/dashboard\/([^/]+)/);
         return m ? m[1] : null;
@@ -91,6 +126,20 @@
       }
 
       const base = window.location.origin;
+      const params = new URLSearchParams(window.location.search);
+      const snapshotRaw = params.get('snapshotYear');
+      let isSnapshotMode = false;
+      let snapshotYear = null;
+      if (snapshotRaw !== null && snapshotRaw !== '') {
+        const sy = parseInt(snapshotRaw, 10);
+        if (!Number.isFinite(sy)) {
+          showError('Некорректный параметр snapshotYear.');
+          return;
+        }
+        snapshotYear = sy;
+        isSnapshotMode = true;
+      }
+
       Promise.all([
         fetch(base + '/api/dashboard/' + encodeURIComponent(dashboardId)).then(r => r.ok ? r.json() : Promise.reject(new Error('Дашборд не найден'))),
         fetch(base + '/data/regions.json').then(r => r.json()),
@@ -102,9 +151,22 @@
           return;
         }
 
+        const mapTitle = (typeof data.title === 'string' && data.title.trim())
+          ? data.title.trim()
+          : 'Интерактивная карта России';
+
         const regionCodes = Object.keys(regionCoordinates);
         const years = data.years.map(y => y.year);
         let currentYearIndex = 0;
+
+        if (isSnapshotMode) {
+          const idx = years.indexOf(snapshotYear);
+          if (idx === -1) {
+            showError('Год ' + snapshotYear + ' отсутствует в данных дашборда.');
+            return;
+          }
+          currentYearIndex = idx;
+        }
 
         function getQuantiles(values) {
           const sorted = values.slice().sort((a, b) => a - b);
@@ -118,7 +180,6 @@
 
         const allYearsQuantiles = data.years.map(yd => getQuantiles(yd.regions.map(r => r.value)));
 
-        /** Квантили конкретного года (нельзя брать quantiles из замыкания — при смене года они устаревают). */
         function getColorForYear(value, q) {
           if (value <= q[0]) return '#1e3a8a';
           if (value <= q[1]) return '#1e40af';
@@ -147,10 +208,42 @@
           return n.toLocaleString('ru-RU', { maximumFractionDigits: 1 });
         }
 
+        function applyHeading(yearValue) {
+          if (isSnapshotMode) {
+            headingEl.textContent = mapTitle + ' за ' + yearValue + 'г';
+            if (subtitleEl) subtitleEl.style.display = 'none';
+            document.title = headingEl.textContent;
+          } else {
+            headingEl.textContent = mapTitle;
+            if (subtitleEl) {
+              subtitleEl.style.display = '';
+              subtitleEl.textContent = 'Наведите курсор на регион для подробной информации (как в основном дашборде).';
+            }
+            document.title = mapTitle;
+          }
+        }
+
+        function buildRegionLegendHtml(yearData) {
+          const rows = yearData.regions.map(function (r) {
+            const name = (regions[r.regionCode] && regions[r.regionCode].title)
+              ? regions[r.regionCode].title
+              : r.regionCode;
+            return { name: name, value: r.value };
+          });
+          rows.sort(function (a, b) { return a.name.localeCompare(b.name, 'ru'); });
+          const inner = rows.map(function (row) {
+            return '<div class="region-legend-row" role="listitem"><span class="region-legend-name">' + escapeHtml(row.name) + '</span>' +
+              '<span class="region-legend-sep"> — </span>' +
+              '<span class="region-legend-val">' + escapeHtml(formatNum(row.value)) + '</span></div>';
+          }).join('');
+          return '<div class="region-legend-wrap"><h3>Регионы</h3><div class="region-legend" role="list" aria-label="Значения по регионам">' + inner + '</div></div>';
+        }
+
         function render() {
           const yearData = data.years[currentYearIndex];
           const qu = allYearsQuantiles[currentYearIndex];
           const yearValue = years[currentYearIndex];
+          applyHeading(yearValue);
           const vMap = {};
           yearData.regions.forEach(r => { vMap[r.regionCode] = r.value; });
 
@@ -165,7 +258,7 @@
             { color: '#ef4444', label: '≤ ' + formatNum(qu[7]), range: '87.5-100%' }
           ];
 
-          const legendHtml = '<div class="legend"><h4>Легенда</h4>' + legendItems.map(function (item) {
+          const legendHtml = '<div class="legend"><h4>Шкала значений</h4>' + legendItems.map(function (item) {
             return '<div class="legend-item"><div class="swatch" style="background:' + item.color + '"></div><div><div class="font-medium">' + escapeHtml(item.label) + '</div><div style="color:#9ca3af">' + item.range + '</div></div></div>';
           }).join('') + '</div>';
 
@@ -191,14 +284,18 @@
               '</div>' +
             '</div>';
 
+          const toolbarHtml = isSnapshotMode
+            ? ''
+            : '<div class="toolbar">' +
+                '<div class="year-nav">' +
+                  '<button type="button" id="btn-prev" aria-label="Предыдущий год">‹</button>' +
+                  '<span class="year-value" id="year-value">' + yearValue + '</span>' +
+                  '<button type="button" id="btn-next" aria-label="Следующий год">›</button>' +
+                '</div>' +
+              '</div>';
+
           root.innerHTML =
-            '<div class="toolbar">' +
-              '<div class="year-nav">' +
-                '<button type="button" id="btn-prev" aria-label="Предыдущий год">‹</button>' +
-                '<span class="year-value" id="year-value">' + yearValue + '</span>' +
-                '<button type="button" id="btn-next" aria-label="Следующий год">›</button>' +
-              '</div>' +
-            '</div>' +
+            toolbarHtml +
             '<div class="content">' +
               legendHtml +
               '<div class="map-wrap">' +
@@ -206,16 +303,19 @@
                 '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" class="w-full h-auto" aria-hidden="false">' + pathsHtml + '</svg>' +
               '</div>' +
             '</div>' +
+            buildRegionLegendHtml(yearData) +
             '<p style="margin-top:16px;text-align:center;color:#6b7280;font-size:14px">Показаны данные по ' + yearData.regions.length + ' регионам за ' + yearValue + ' год</p>';
 
-          document.getElementById('btn-prev').onclick = function () {
-            currentYearIndex = currentYearIndex === 0 ? years.length - 1 : currentYearIndex - 1;
-            render();
-          };
-          document.getElementById('btn-next').onclick = function () {
-            currentYearIndex = currentYearIndex === years.length - 1 ? 0 : currentYearIndex + 1;
-            render();
-          };
+          if (!isSnapshotMode) {
+            document.getElementById('btn-prev').onclick = function () {
+              currentYearIndex = currentYearIndex === 0 ? years.length - 1 : currentYearIndex - 1;
+              render();
+            };
+            document.getElementById('btn-next').onclick = function () {
+              currentYearIndex = currentYearIndex === years.length - 1 ? 0 : currentYearIndex + 1;
+              render();
+            };
+          }
 
           const svg = root.querySelector('.map-wrap svg');
           const panel = document.getElementById('region-panel');

@@ -1,11 +1,14 @@
 {
   "data": {
+    "title": "Индекс (произвольная шкала)",
     "years": [
       {
         "year": 2024,
         "regions": [
-          { "regionCode": "ru-mow", "value": 1 },
-          { "regionCode": "RU-ba", "value": 2 }
+          { "regionCode": "ru-mow", "value": 950000 },
+          { "regionCode": "RU-ba", "value": 12000 },
+          { "regionCode": "RU-TA", "value": 890000 },
+          { "regionCode": "RU-KHM", "value": 2100000 }
         ]
       }
     ]

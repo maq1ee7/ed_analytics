@@ -1,19 +1,56 @@
 {
   "data": {
+    "title": "Сдвиг лидера по годам (тест мульти-года)",
     "years": [
+      {
+        "year": 2021,
+        "regions": [
+          { "regionCode": "RU-MOW", "value": 5200000 },
+          { "regionCode": "RU-SPE", "value": 120000 },
+          { "regionCode": "RU-SVE", "value": 95000 },
+          { "regionCode": "RU-KDA", "value": 180000 },
+          { "regionCode": "RU-BA", "value": 210000 },
+          { "regionCode": "RU-TA", "value": 195000 },
+          { "regionCode": "RU-CHE", "value": 140000 },
+          { "regionCode": "RU-NVS", "value": 88000 },
+          { "regionCode": "RU-SAM", "value": 125000 },
+          { "regionCode": "RU-ROS", "value": 110000 },
+          { "regionCode": "RU-KR", "value": 42000 },
+          { "regionCode": "RU-CHU", "value": 15000 }
+        ]
+      },
       {
         "year": 2022,
         "regions": [
-          { "regionCode": "RU-SPE", "value": 12 },
-          { "regionCode": "RU-LEN", "value": 7 }
+          { "regionCode": "RU-MOW", "value": 95000 },
+          { "regionCode": "RU-SPE", "value": 110000 },
+          { "regionCode": "RU-SVE", "value": 78000 },
+          { "regionCode": "RU-KDA", "value": 5100000 },
+          { "regionCode": "RU-BA", "value": 160000 },
+          { "regionCode": "RU-TA", "value": 175000 },
+          { "regionCode": "RU-CHE", "value": 130000 },
+          { "regionCode": "RU-NVS", "value": 92000 },
+          { "regionCode": "RU-SAM", "value": 118000 },
+          { "regionCode": "RU-ROS", "value": 105000 },
+          { "regionCode": "RU-KR", "value": 38000 },
+          { "regionCode": "RU-CHU", "value": 12000 }
         ]
       },
       {
         "year": 2023,
         "regions": [
-          { "regionCode": "RU-SPE", "value": 18 },
-          { "regionCode": "RU-LEN", "value": 9 },
-          { "regionCode": "RU-MOW", "value": 25 }
+          { "regionCode": "RU-MOW", "value": 88000 },
+          { "regionCode": "RU-SPE", "value": 105000 },
+          { "regionCode": "RU-SVE", "value": 72000 },
+          { "regionCode": "RU-KDA", "value": 165000 },
+          { "regionCode": "RU-BA", "value": 155000 },
+          { "regionCode": "RU-TA", "value": 148000 },
+          { "regionCode": "RU-CHE", "value": 125000 },
+          { "regionCode": "RU-NVS", "value": 4950000 },
+          { "regionCode": "RU-SAM", "value": 112000 },
+          { "regionCode": "RU-ROS", "value": 98000 },
+          { "regionCode": "RU-KR", "value": 35000 },
+          { "regionCode": "RU-CHU", "value": 11000 }
         ]
       }
     ]

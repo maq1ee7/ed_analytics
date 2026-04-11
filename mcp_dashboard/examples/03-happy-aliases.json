@@ -1,12 +1,15 @@
 {
   "data": {
+    "title": "Добыча нефти (условные единицы)",
     "years": [
       {
         "year": 2023,
         "regions": [
-          { "regionCode": "Югра", "value": 100 },
-          { "regionCode": "Москва", "value": 200 },
-          { "regionCode": "Питер", "value": 150 }
+          { "regionCode": "Югра", "value": 5200000 },
+          { "regionCode": "Москва", "value": 0 },
+          { "regionCode": "Питер", "value": 1200 },
+          { "regionCode": "ЯНАО", "value": 4100000 },
+          { "regionCode": "Татарстан", "value": 3800000 }
         ]
       }
     ]

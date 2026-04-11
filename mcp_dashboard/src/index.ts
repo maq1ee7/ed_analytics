@@ -26,6 +26,7 @@ async function main(): Promise<void> {
   } = await import('./russiaRegionCatalog.js');
 
   const RussiaMapDataSchema = z.object({
+    title: z.string().min(1),
     years: z.array(
       z.object({
         year: z.number(),
@@ -47,7 +48,7 @@ async function main(): Promise<void> {
       title: 'MCP Dashboard — карты и дашборды',
       description:
         'Для любой визуализации по субъектам Российской Федерации (хороплет, сравнение лет, показатели по регионам: добыча, ВРП, демография и т.д.) ' +
-        'предпочитайте инструмент create_russia_map вместо самописного HTML/Highcharts: он даёт интерактивный дашборд и готовый PNG. ' +
+        'предпочитайте инструмент create_russia_map вместо самописного HTML/Highcharts: он даёт интерактивный дашборд и PNG по каждому году. ' +
         `Коды регионов — ISO 3166-2:RU; полный справочник: MCP resource ${RUSSIA_REGION_CODES_URI} или инструмент get_russia_region_codes.`,
     });
 
@@ -94,12 +95,16 @@ async function main(): Promise<void> {
           'Интерактивная карта России по субъектам РФ: слайдер года, легенда, экспорт. ' +
           'Используйте для запросов вроде «карта по регионам», «добыча нефти по областям», «показатель X по субъектам РФ», сравнение лет. ' +
           'Не собирайте отдельную веб-страницу с картой, если достаточно этого инструмента. ' +
-          'Входной JSON: { "years": [ { "year": 2023, "regions": [ { "regionCode": "RU-MOW", "value": 100 } ] } ] } — regionCode в формате ISO 3166-2:RU. ' +
+          'Входной JSON: { "title": "…", "years": [ { "year": 2023, "regions": [ { "regionCode": "RU-MOW", "value": 100 } ] } ] } — regionCode в формате ISO 3166-2:RU, title — заголовок показателя. ' +
           `Список кодов и алиасов: ${RUSSIA_REGION_CODES_URI} или get_russia_region_codes. ` +
-          'Ответ: JSON с dashboardUrl (пока запущен сервер) и изображение PNG (стабильный превью-артефакт в ответе).',
+          'Ответ: JSON с dashboardUrl (пока запущен сервер) и по одному PNG на каждый год (в том же порядке, что years).',
         inputSchema: {
           data: z
             .object({
+              title: z
+                .string()
+                .min(1)
+                .describe('Заголовок карты: что показывает показатель (например «Количество школьников», «Добыча нефти, т»).'),
               years: z.array(
                 z.object({
                   year: z.number(),
@@ -113,7 +118,7 @@ async function main(): Promise<void> {
               ),
             })
             .describe(
-              'Данные для карты: массив лет, для каждого года — массив регионов с кодом ISO 3166-2:RU и числовым значением'
+              'Данные для карты: title, массив лет; для каждого года — регионы с кодом ISO 3166-2:RU и числовым значением'
             ),
         },
       },
@@ -129,14 +134,18 @@ async function main(): Promise<void> {
           RussiaMapDataSchema.parse(data);
           const result = await createRussiaMap({ data });
           console.error('[mcp-dashboard] [tool] create_russia_map успех', result.dashboardId);
+          const yearsOrder = data.years.map((y: { year: number }) => y.year);
           const text = JSON.stringify(
             {
               dashboardUrl: result.dashboardUrl,
               dashboardId: result.dashboardId,
+              title: data.title,
+              pngCount: result.imagesBase64.length,
+              snapshotYearsOrder: yearsOrder,
               regionCodesResourceUri: RUSSIA_REGION_CODES_URI,
               message:
                 'Дашборд создан. Ссылка на интерактивную версию действительна, пока запущен сервер. ' +
-                'В том же ответе передаётся PNG — его можно показать пользователю без открытия URL.',
+                'В ответе передаётся по одному PNG на каждый год (блоки изображений в том же порядке, что snapshotYearsOrder).',
             },
             null,
             2
@@ -144,7 +153,11 @@ async function main(): Promise<void> {
           return {
             content: [
               { type: 'text', text },
-              { type: 'image', data: result.imageBase64, mimeType: 'image/png' },
+              ...result.imagesBase64.map((b64) => ({
+                type: 'image' as const,
+                data: b64,
+                mimeType: 'image/png' as const,
+              })),
             ],
           };
         } catch (err) {

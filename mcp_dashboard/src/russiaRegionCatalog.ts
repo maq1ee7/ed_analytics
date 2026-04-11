@@ -210,6 +210,7 @@ export const assertRussiaMapRegionCodes = (data: RussiaMapChartData): void => {
 
 /** Приводит regionCode к каноническому виду после успешной проверки assertRussiaMapRegionCodes. */
 export const normalizeRussiaMapChartData = (data: RussiaMapChartData): RussiaMapChartData => ({
+  title: data.title.trim(),
   years: data.years.map((year) => ({
     ...year,
     regions: year.regions.map((r) => {
