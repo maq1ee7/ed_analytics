@@ -4,15 +4,13 @@
 
 # Dependencies
 node_modules/
-backend/node_modules/
-frontend/node_modules/
 
 # Production builds
 dist/
 build/
-backend/dist/
-frontend/dist/
-frontend/build/
+analytics/backend/dist/
+analytics/frontend/dist/
+analytics/frontend/build/
 
 # Environment variables
 .env
@@ -20,8 +18,9 @@ frontend/build/
 .env.development
 .env.production
 .env.test
-backend/.env*
-frontend/.env*
+analytics/backend/.env*
+analytics/frontend/.env*
+mcp_dashboard/.env*
 
 # Logs
 logs/
@@ -65,7 +64,8 @@ coverage/
 .rts2_cache_umd/
 
 # Vite
-frontend/.vite/
+analytics/frontend/.vite/
+mcp_dashboard/.vite/
 
 # Package manager files
 *.tgz
@@ -124,6 +124,9 @@ temp/
 # =================================
 
 # Локальные скрипты разработчика
+analytics/scripts/local-*
+analytics/scripts/dev-*
+analytics/scripts/test-*
 scripts/local-*
 scripts/dev-*
 scripts/test-*
@@ -158,4 +161,4 @@ certs/
 
 
 neo4j.dump
-frontend/package-lock.json
+analytics/frontend/package-lock.json

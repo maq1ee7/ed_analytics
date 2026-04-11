@@ -20,9 +20,40 @@
     .legend h4 { margin: 0 0 12px; font-size: 0.875rem; color: #374151; }
     .legend-item { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; font-size: 12px; color: #4b5563; }
     .legend-item .swatch { width: 32px; height: 24px; border-radius: 4px; border: 1px solid #d1d5db; flex-shrink: 0; }
-    .map-wrap { flex: 1; min-width: 400px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.1)); }
-    .map-wrap svg { width: 100%; height: auto; }
+    .map-wrap { flex: 1; min-width: 400px; position: relative; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.1)); }
+    .map-wrap svg { width: 100%; height: auto; display: block; }
     .map-wrap path { cursor: pointer; transition: fill 0.15s; }
+    .region-panel {
+      position: absolute;
+      z-index: 50;
+      right: 16px;
+      top: 12px;
+      max-width: min(280px, 42vw);
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .region-panel.is-hidden { opacity: 0; visibility: hidden; }
+    .region-panel-inner {
+      background: #fff;
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+      border: 1px solid #bfdbfe;
+    }
+    .region-panel-inner h4 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1d4ed8;
+      line-height: 1.25;
+    }
+    .region-panel-inner .meta { margin: 0; font-size: 0.8125rem; color: #4b5563; }
+    .region-panel-inner .lbl { font-weight: 600; }
+    .region-panel-inner .row { margin-bottom: 6px; }
+    .region-panel-inner .row:last-child { margin-bottom: 0; }
+    .val-hot { color: #dc2626; font-weight: 600; }
+    .val-warm { color: #16a34a; font-weight: 600; }
+    .val-cool { color: #2563eb; font-weight: 600; }
     .error { color: #dc2626; padding: 16px; }
     .loading { color: #6b7280; padding: 16px; }
   </style>
@@ -30,7 +61,7 @@
 <body>
   <div class="container">
     <h2>Интерактивная карта России</h2>
-    <p class="subtitle">Данные по регионам</p>
+    <p class="subtitle">Наведите курсор на регион для подробной информации (как в основном дашборде).</p>
     <div id="root">
       <div class="loading">Загрузка…</div>
     </div>
@@ -86,20 +117,30 @@
         }
 
         const allYearsQuantiles = data.years.map(yd => getQuantiles(yd.regions.map(r => r.value)));
-        const quantiles = allYearsQuantiles[currentYearIndex];
-        const valueMap = {};
-        data.years[currentYearIndex].regions.forEach(r => { valueMap[r.regionCode] = r.value; });
 
-        function getColor(value) {
-          if (value <= quantiles[0]) return '#1e3a8a';
-          if (value <= quantiles[1]) return '#1e40af';
-          if (value <= quantiles[2]) return '#3b82f6';
-          if (value <= quantiles[3]) return '#06b6d4';
-          if (value <= quantiles[4]) return '#10b981';
-          if (value <= quantiles[5]) return '#84cc16';
-          if (value <= quantiles[6]) return '#f59e0b';
-          if (value <= quantiles[7]) return '#ef4444';
+        /** Квантили конкретного года (нельзя брать quantiles из замыкания — при смене года они устаревают). */
+        function getColorForYear(value, q) {
+          if (value <= q[0]) return '#1e3a8a';
+          if (value <= q[1]) return '#1e40af';
+          if (value <= q[2]) return '#3b82f6';
+          if (value <= q[3]) return '#06b6d4';
+          if (value <= q[4]) return '#10b981';
+          if (value <= q[5]) return '#84cc16';
+          if (value <= q[6]) return '#f59e0b';
+          if (value <= q[7]) return '#ef4444';
           return '#dc2626';
+        }
+
+        function getHoverColorForYear(value, q) {
+          if (value <= q[0]) return '#1e40af';
+          if (value <= q[1]) return '#1d4ed8';
+          if (value <= q[2]) return '#2563eb';
+          if (value <= q[3]) return '#0891b2';
+          if (value <= q[4]) return '#059669';
+          if (value <= q[5]) return '#65a30d';
+          if (value <= q[6]) return '#d97706';
+          if (value <= q[7]) return '#dc2626';
+          return '#b91c1c';
         }
 
         function formatNum(n) {
@@ -109,6 +150,7 @@
         function render() {
           const yearData = data.years[currentYearIndex];
           const qu = allYearsQuantiles[currentYearIndex];
+          const yearValue = years[currentYearIndex];
           const vMap = {};
           yearData.regions.forEach(r => { vMap[r.regionCode] = r.value; });
 
@@ -129,12 +171,26 @@
 
           const pathsHtml = regionCodes.map(function (code) {
             const value = vMap[code] ?? 0;
-            const fill = getColor(value);
-            const title = (regions[code] && regions[code].title) ? regions[code].title : code;
-            return '<path d="' + escapeHtml(regionCoordinates[code] || '') + '" fill="' + fill + '" stroke="#fff" stroke-width="1" stroke-linejoin="round" data-code="' + escapeHtml(code) + '" title="' + escapeHtml(title) + ' ' + formatNum(value) + '"/>';
+            const baseFill = getColorForYear(value, qu);
+            const hoverFill = getHoverColorForYear(value, qu);
+            const regionTitle = (regions[code] && regions[code].title) ? regions[code].title : code;
+            const tip = regionTitle + ' (' + code + '): ' + formatNum(value) + ' — ' + yearValue;
+            const d = regionCoordinates[code] || '';
+            return '<path d="' + escapeHtml(d) + '" fill="' + baseFill + '" data-base-fill="' + baseFill + '" data-hover-fill="' + hoverFill + '" stroke="#fff" stroke-width="1" stroke-linejoin="round" data-code="' + escapeHtml(code) + '" aria-label="' + escapeHtml(tip) + '"><title>' + escapeHtml(tip) + '</title></path>';
           }).join('');
 
-          const yearValue = years[currentYearIndex];
+          const panelHtml =
+            '<div id="region-panel" class="region-panel is-hidden" role="region" aria-live="polite" aria-label="Данные по региону">' +
+              '<div class="region-panel-inner meta">' +
+                '<h4 id="panel-title"></h4>' +
+                '<div class="row"><span class="lbl">Код: </span><span id="panel-code"></span></div>' +
+                '<div class="row"><span class="lbl">Тип: </span><span id="panel-type"></span></div>' +
+                '<div class="row"><span class="lbl">Федеральный округ: </span><span id="panel-district"></span></div>' +
+                '<div class="row"><span class="lbl">Год: </span><span id="panel-year"></span></div>' +
+                '<div class="row"><span class="lbl">Значение: </span><span id="panel-value"></span></div>' +
+              '</div>' +
+            '</div>';
+
           root.innerHTML =
             '<div class="toolbar">' +
               '<div class="year-nav">' +
@@ -145,7 +201,10 @@
             '</div>' +
             '<div class="content">' +
               legendHtml +
-              '<div class="map-wrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" class="w-full h-auto">' + pathsHtml + '</svg></div>' +
+              '<div class="map-wrap">' +
+                panelHtml +
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" class="w-full h-auto" aria-hidden="false">' + pathsHtml + '</svg>' +
+              '</div>' +
             '</div>' +
             '<p style="margin-top:16px;text-align:center;color:#6b7280;font-size:14px">Показаны данные по ' + yearData.regions.length + ' регионам за ' + yearValue + ' год</p>';
 
@@ -157,6 +216,51 @@
             currentYearIndex = currentYearIndex === years.length - 1 ? 0 : currentYearIndex + 1;
             render();
           };
+
+          const svg = root.querySelector('.map-wrap svg');
+          const panel = document.getElementById('region-panel');
+          const elTitle = document.getElementById('panel-title');
+          const elCode = document.getElementById('panel-code');
+          const elType = document.getElementById('panel-type');
+          const elDistrict = document.getElementById('panel-district');
+          const elYear = document.getElementById('panel-year');
+          const elValue = document.getElementById('panel-value');
+
+          function hideRegionPanel() {
+            panel.classList.add('is-hidden');
+          }
+
+          function showRegionPanel(code, value) {
+            const info = regions[code];
+            const title = (info && info.title) ? info.title : 'Неизвестный регион';
+            const typeStr = (info && info.type) ? info.type : '—';
+            const distStr = (info && info.federalDistrict) ? info.federalDistrict : '—';
+            elTitle.textContent = title;
+            elCode.textContent = code;
+            elType.textContent = typeStr;
+            elDistrict.textContent = distStr;
+            elYear.textContent = String(yearValue);
+            elValue.textContent = formatNum(value);
+            elValue.className = value > 10 ? 'val-hot' : (value > 0 ? 'val-warm' : 'val-cool');
+            panel.classList.remove('is-hidden');
+          }
+
+          root.querySelectorAll('.map-wrap path[data-code]').forEach(function (pathEl) {
+            pathEl.addEventListener('mouseenter', function () {
+              const code = pathEl.getAttribute('data-code');
+              const hf = pathEl.getAttribute('data-hover-fill');
+              if (hf) pathEl.setAttribute('fill', hf);
+              const val = vMap[code] ?? 0;
+              showRegionPanel(code, val);
+            });
+            pathEl.addEventListener('mouseleave', function (evt) {
+              const bf = pathEl.getAttribute('data-base-fill');
+              if (bf) pathEl.setAttribute('fill', bf);
+              const rel = evt.relatedTarget;
+              if (rel && svg.contains(rel) && rel.closest && rel.closest('path[data-code]')) return;
+              hideRegionPanel();
+            });
+          });
         }
 
         render();
