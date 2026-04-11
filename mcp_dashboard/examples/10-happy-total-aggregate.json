@@ -1,0 +1,15 @@
+{
+  "data": {
+    "title": "Агрегат «остальные регионы» через total",
+    "years": [
+      {
+        "year": 2024,
+        "total": 500000,
+        "regions": [
+          { "regionCode": "RU-MOW", "value": 100000 },
+          { "regionCode": "RU-SPE", "value": 50000 }
+        ]
+      }
+    ]
+  }
+}

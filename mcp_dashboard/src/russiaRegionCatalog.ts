@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import type { RussiaMapChartData } from './types.js';
+import type { RussiaMapChartData, RussiaMapRegionData } from './types.js';
 
 /** URI MCP resource со справочником кодов (ISO 3166-2:RU + алиасы). */
 export const RUSSIA_REGION_CODES_URI = 'dashboard://mcp-dashboard/russia-region-codes';
@@ -53,6 +53,11 @@ const rawRegions: Record<string, RegionMeta> = JSON.parse(
 ) as Record<string, RegionMeta>;
 
 const VALID_CODES = new Set(Object.keys(rawRegions));
+
+/** Коды субъектов, для которых в `data/regionCoordinates.json` есть контур карты (совпадает с `VALID_CODES`). */
+export const RUSSIA_MAP_POLYGON_REGION_CODES: readonly string[] = [...VALID_CODES].sort();
+
+const POLYGON_CODE_SET: ReadonlySet<string> = VALID_CODES;
 
 /**
  * Дополнительные алиасы (подпись для справочника и нормализованный ключ для поиска).
@@ -145,6 +150,14 @@ export class RussiaMapRegionValidationError extends Error {
   }
 }
 
+/** Несогласованность поля `total` с суммой по регионам или с полнотой перечисления контуров карты. */
+export class RussiaMapTotalValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RussiaMapTotalValidationError';
+  }
+}
+
 const suggestCodes = (invalid: string, limit = 5): string[] => {
   const upper = invalid.toUpperCase();
   const scored = [...VALID_CODES].map((code) => ({
@@ -208,20 +221,83 @@ export const assertRussiaMapRegionCodes = (data: RussiaMapChartData): void => {
   );
 };
 
-/** Приводит regionCode к каноническому виду после успешной проверки assertRussiaMapRegionCodes. */
-export const normalizeRussiaMapChartData = (data: RussiaMapChartData): RussiaMapChartData => ({
-  title: data.title.trim(),
-  years: data.years.map((year) => ({
-    ...year,
-    regions: year.regions.map((r) => {
+/**
+ * Дубликаты одного региона в году: для суммы и отображения берётся последнее значение в порядке перечисления.
+ */
+export const dedupeRegionsLastWins = (regions: RussiaMapRegionData[]): RussiaMapRegionData[] => {
+  const lastByCode = new Map<string, number>();
+  for (const r of regions) {
+    const code = resolveRegionCode(r.regionCode);
+    if (!code) {
+      throw new Error('Внутренняя ошибка: код региона не разрешён после валидации.');
+    }
+    lastByCode.set(code, r.value);
+  }
+  return [...lastByCode.keys()]
+    .sort((a, b) => a.localeCompare(b))
+    .map((regionCode) => ({ regionCode, value: lastByCode.get(regionCode)! }));
+};
+
+const sumListedValues = (regions: RussiaMapRegionData[]): number =>
+  regions.reduce((s, r) => s + r.value, 0);
+
+const applyYearTotal = (
+  year: number,
+  listedRegions: RussiaMapRegionData[],
+  total: number
+): { total: number; restAggregateValue?: number } => {
+  const listedSum = sumListedValues(listedRegions);
+  if (total < listedSum) {
+    throw new RussiaMapTotalValidationError(
+      `Год ${year}: total (${total}) меньше суммы по перечисленным регионам (${listedSum}); при дубликатах кода учитывается последнее значение.`
+    );
+  }
+  const listedCodes = new Set(listedRegions.map((r) => r.regionCode));
+  let unlistedPolygonCount = 0;
+  for (const code of POLYGON_CODE_SET) {
+    if (!listedCodes.has(code)) unlistedPolygonCount++;
+  }
+  const rest = total - listedSum;
+  if (unlistedPolygonCount === 0 && rest > 0) {
+    throw new RussiaMapTotalValidationError(
+      `Год ${year}: перечислены все субъекты карты (контуры из data/regionCoordinates.json), но total (${total}) больше суммы по перечисленным (${listedSum}) — излишек некуда отнести.`
+    );
+  }
+  if (rest > 0 && unlistedPolygonCount > 0) {
+    return { total, restAggregateValue: rest };
+  }
+  return { total };
+};
+
+/**
+ * Нормализует коды регионов, снимает дубликаты (последнее значение на код), проверяет и применяет `total`.
+ */
+export const normalizeRussiaMapChartData = (data: RussiaMapChartData): RussiaMapChartData => {
+  const title = data.title.trim();
+  const years = data.years.map((yearData) => {
+    const resolved: RussiaMapRegionData[] = yearData.regions.map((r) => {
       const code = resolveRegionCode(r.regionCode);
       if (!code) {
         throw new Error('Внутренняя ошибка: код региона не разрешён после валидации.');
       }
       return { regionCode: code, value: r.value };
-    }),
-  })),
-});
+    });
+    const deduped = dedupeRegionsLastWins(resolved);
+
+    if (yearData.total === undefined) {
+      return { year: yearData.year, regions: deduped };
+    }
+
+    const applied = applyYearTotal(yearData.year, deduped, yearData.total);
+    return {
+      year: yearData.year,
+      regions: deduped,
+      total: applied.total,
+      ...(applied.restAggregateValue !== undefined ? { restAggregateValue: applied.restAggregateValue } : {}),
+    };
+  });
+  return { title, years };
+};
 
 export type RussiaRegionCodesPayload = {
   schema: 'mcp-dashboard.russia-regions.v1';

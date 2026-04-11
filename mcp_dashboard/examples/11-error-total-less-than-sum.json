@@ -1,0 +1,15 @@
+{
+  "data": {
+    "title": "Ошибка: total меньше суммы по регионам",
+    "years": [
+      {
+        "year": 2024,
+        "total": 100,
+        "regions": [
+          { "regionCode": "RU-MOW", "value": 200 },
+          { "regionCode": "RU-SPE", "value": 50 }
+        ]
+      }
+    ]
+  }
+}

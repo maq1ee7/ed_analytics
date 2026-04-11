@@ -18,11 +18,32 @@
     .content { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
     .legend { flex-shrink: 0; background: #f9fafb; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; }
     .legend h4 { margin: 0 0 12px; font-size: 0.875rem; color: #374151; }
-    .legend-item { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; font-size: 12px; color: #4b5563; }
+    .legend-item { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; font-size: 12px; color: #4b5563; }
+    .legend-item:last-child { margin-bottom: 0; }
     .legend-item .swatch { width: 32px; height: 24px; border-radius: 4px; border: 1px solid #d1d5db; flex-shrink: 0; }
-    .map-wrap { flex: 1; min-width: 400px; position: relative; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.1)); }
-    .map-wrap svg { width: 100%; height: auto; display: block; }
-    .map-wrap path { cursor: pointer; transition: fill 0.15s; }
+    .legend-label-line { color: #4b5563; font-weight: 400; }
+    .legend-range-line { color: #9ca3af; font-size: 11px; margin-top: 2px; }
+    .legend-item--aggregate { align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb; }
+    /* Образец агрегата — тот же viewBox и url(#pat-rest-stripes), что у карты (полосы в user space) */
+    .legend-swatch-rest-svg {
+      display: block;
+      width: 32px;
+      height: 24px;
+      flex-shrink: 0;
+      border-radius: 4px;
+      border: 1px solid #d1d5db;
+    }
+    .legend-aggregate-val { font-size: 12px; color: #4b5563; font-variant-numeric: tabular-nums; }
+    .map-wrap {
+      flex: 1;
+      min-width: 400px;
+      position: relative;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .map-wrap svg { width: 100%; height: auto; display: block; border-radius: 8px; }
+    .map-wrap path.poly-listed { cursor: pointer; transition: fill 0.15s ease; }
+    .map-wrap path.poly-rest { cursor: pointer; }
     .region-panel {
       position: absolute;
       z-index: 50;
@@ -89,6 +110,7 @@
     .region-legend-val { font-variant-numeric: tabular-nums; }
     .error { color: #dc2626; padding: 16px; }
     .loading { color: #6b7280; padding: 16px; }
+    .map-footer-note { margin-top: 16px; text-align: center; color: #6b7280; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -178,8 +200,6 @@
           return [getQ(12.5), getQ(25), getQ(37.5), getQ(50), getQ(62.5), getQ(75), getQ(87.5), getQ(100)];
         }
 
-        const allYearsQuantiles = data.years.map(yd => getQuantiles(yd.regions.map(r => r.value)));
-
         function getColorForYear(value, q) {
           if (value <= q[0]) return '#1e3a8a';
           if (value <= q[1]) return '#1e40af';
@@ -223,7 +243,7 @@
           }
         }
 
-        function buildRegionLegendHtml(yearData) {
+        function buildRegionLegendHtml(yearData, restAggregateValue) {
           const rows = yearData.regions.map(function (r) {
             const name = (regions[r.regionCode] && regions[r.regionCode].title)
               ? regions[r.regionCode].title
@@ -231,45 +251,85 @@
             return { name: name, value: r.value };
           });
           rows.sort(function (a, b) { return a.name.localeCompare(b.name, 'ru'); });
-          const inner = rows.map(function (row) {
+          let inner = rows.map(function (row) {
             return '<div class="region-legend-row" role="listitem"><span class="region-legend-name">' + escapeHtml(row.name) + '</span>' +
               '<span class="region-legend-sep"> — </span>' +
               '<span class="region-legend-val">' + escapeHtml(formatNum(row.value)) + '</span></div>';
           }).join('');
+          if (typeof restAggregateValue === 'number' && restAggregateValue > 0) {
+            inner += '<div class="region-legend-row" role="listitem"><span class="region-legend-name">Остальные регионы</span>' +
+              '<span class="region-legend-sep"> — </span>' +
+              '<span class="region-legend-val">' + escapeHtml(formatNum(restAggregateValue)) + '</span></div>';
+          }
           return '<div class="region-legend-wrap"><h3>Регионы</h3><div class="region-legend" role="list" aria-label="Значения по регионам">' + inner + '</div></div>';
         }
 
         function render() {
           const yearData = data.years[currentYearIndex];
-          const qu = allYearsQuantiles[currentYearIndex];
+          const restAgg = (typeof yearData.restAggregateValue === 'number' && yearData.restAggregateValue > 0)
+            ? yearData.restAggregateValue
+            : 0;
+          const listedCodes = new Set(yearData.regions.map(function (r) { return r.regionCode; }));
+
+          const valueListForQuantiles = yearData.regions.map(function (r) { return r.value; });
+          if (restAgg > 0) valueListForQuantiles.push(restAgg);
+
+          const qu = getQuantiles(valueListForQuantiles);
           const yearValue = years[currentYearIndex];
           applyHeading(yearValue);
           const vMap = {};
-          yearData.regions.forEach(r => { vMap[r.regionCode] = r.value; });
+          yearData.regions.forEach(function (r) { vMap[r.regionCode] = r.value; });
 
           const legendItems = [
-            { color: '#1e3a8a', label: '≤ ' + formatNum(qu[0]), range: '0-12.5%' },
-            { color: '#1e40af', label: '≤ ' + formatNum(qu[1]), range: '12.5-25%' },
-            { color: '#3b82f6', label: '≤ ' + formatNum(qu[2]), range: '25-37.5%' },
-            { color: '#06b6d4', label: '≤ ' + formatNum(qu[3]), range: '37.5-50%' },
-            { color: '#10b981', label: '≤ ' + formatNum(qu[4]), range: '50-62.5%' },
-            { color: '#84cc16', label: '≤ ' + formatNum(qu[5]), range: '62.5-75%' },
-            { color: '#f59e0b', label: '≤ ' + formatNum(qu[6]), range: '75-87.5%' },
-            { color: '#ef4444', label: '≤ ' + formatNum(qu[7]), range: '87.5-100%' }
+            { color: '#1e3a8a', label: '≤ ' + formatNum(qu[0]), range: '0–12.5%' },
+            { color: '#1e40af', label: '≤ ' + formatNum(qu[1]), range: '12.5–25%' },
+            { color: '#3b82f6', label: '≤ ' + formatNum(qu[2]), range: '25–37.5%' },
+            { color: '#06b6d4', label: '≤ ' + formatNum(qu[3]), range: '37.5–50%' },
+            { color: '#10b981', label: '≤ ' + formatNum(qu[4]), range: '50–62.5%' },
+            { color: '#84cc16', label: '≤ ' + formatNum(qu[5]), range: '62.5–75%' },
+            { color: '#f59e0b', label: '≤ ' + formatNum(qu[6]), range: '75–87.5%' },
+            { color: '#ef4444', label: '≤ ' + formatNum(qu[7]), range: '87.5–100%' }
           ];
 
-          const legendHtml = '<div class="legend"><h4>Шкала значений</h4>' + legendItems.map(function (item) {
-            return '<div class="legend-item"><div class="swatch" style="background:' + item.color + '"></div><div><div class="font-medium">' + escapeHtml(item.label) + '</div><div style="color:#9ca3af">' + item.range + '</div></div></div>';
-          }).join('') + '</div>';
+          let legendHtml = '<div class="legend"><h4>Шкала значений</h4>';
+          legendHtml += legendItems.map(function (item) {
+            return '<div class="legend-item"><div class="swatch" style="background:' + item.color + '"></div><div>' +
+              '<div class="legend-label-line">' + escapeHtml(item.label) + '</div>' +
+              '<div class="legend-range-line">' + item.range + '</div></div></div>';
+          }).join('');
+          if (restAgg > 0) {
+            legendHtml += '<div class="legend-item legend-item--aggregate">' +
+              '<svg class="legend-swatch-rest-svg" width="32" height="24" viewBox="0 0 1000 600" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">' +
+              '<rect width="1000" height="600" fill="url(#pat-rest-stripes)"/></svg>' +
+              '<span class="legend-aggregate-val">' + escapeHtml(formatNum(restAgg)) + '</span></div>';
+          }
+          legendHtml += '</div>';
+
+          /**
+           * Полосы в координатах карты (userSpaceOnUse), не в bbox региона — угол и толщина одинаковы везде.
+           * Период 7 единиц: 5 серых + 2 оранжевых по оси до поворота; patternTransform — общий для всех полигонов.
+           */
+          const restFillDefs =
+            '<svg class="rest-fill-sprite" style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none" aria-hidden="true" focusable="false">' +
+            '<defs>' +
+            '<pattern id="pat-rest-stripes" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45 3.5 3.5)">' +
+            '<rect width="7" height="7" fill="#aeb6c2"/>' +
+            '<rect x="5" y="0" width="2" height="7" fill="rgb(234, 88, 12)" fill-opacity="0.95"/>' +
+            '</pattern></defs></svg>';
 
           const pathsHtml = regionCodes.map(function (code) {
+            const d = regionCoordinates[code] || '';
+            const isRestPolygon = restAgg > 0 && !listedCodes.has(code);
+            if (isRestPolygon) {
+              const tip = 'Остальные регионы: ' + formatNum(restAgg) + ' — ' + yearValue;
+              return '<path class="poly-rest" d="' + escapeHtml(d) + '" fill="url(#pat-rest-stripes)" data-code="' + escapeHtml(code) + '" data-rest="1" stroke="#fff" stroke-width="1" stroke-linejoin="round" aria-label="' + escapeHtml(tip) + '"><title>' + escapeHtml(tip) + '</title></path>';
+            }
             const value = vMap[code] ?? 0;
             const baseFill = getColorForYear(value, qu);
             const hoverFill = getHoverColorForYear(value, qu);
             const regionTitle = (regions[code] && regions[code].title) ? regions[code].title : code;
             const tip = regionTitle + ' (' + code + '): ' + formatNum(value) + ' — ' + yearValue;
-            const d = regionCoordinates[code] || '';
-            return '<path d="' + escapeHtml(d) + '" fill="' + baseFill + '" data-base-fill="' + baseFill + '" data-hover-fill="' + hoverFill + '" stroke="#fff" stroke-width="1" stroke-linejoin="round" data-code="' + escapeHtml(code) + '" aria-label="' + escapeHtml(tip) + '"><title>' + escapeHtml(tip) + '</title></path>';
+            return '<path class="poly-listed" d="' + escapeHtml(d) + '" fill="' + baseFill + '" data-base-fill="' + baseFill + '" data-hover-fill="' + hoverFill + '" stroke="#fff" stroke-width="1" stroke-linejoin="round" data-code="' + escapeHtml(code) + '" data-rest="0" aria-label="' + escapeHtml(tip) + '"><title>' + escapeHtml(tip) + '</title></path>';
           }).join('');
 
           const panelHtml =
@@ -294,17 +354,24 @@
                 '</div>' +
               '</div>';
 
+          let footerText = 'Перечислено ' + yearData.regions.length + ' субъектов · ' + yearValue;
+          if (restAgg > 0) {
+            footerText += ' · остальные (агрегат): ' + formatNum(restAgg);
+          }
+
           root.innerHTML =
             toolbarHtml +
             '<div class="content">' +
+              (restAgg > 0 ? restFillDefs : '') +
               legendHtml +
               '<div class="map-wrap">' +
                 panelHtml +
-                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" class="w-full h-auto" aria-hidden="false">' + pathsHtml + '</svg>' +
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" class="w-full h-auto" aria-hidden="false">' +
+                pathsHtml + '</svg>' +
               '</div>' +
             '</div>' +
-            buildRegionLegendHtml(yearData) +
-            '<p style="margin-top:16px;text-align:center;color:#6b7280;font-size:14px">Показаны данные по ' + yearData.regions.length + ' регионам за ' + yearValue + ' год</p>';
+            buildRegionLegendHtml(yearData, restAgg) +
+            '<p class="map-footer-note">' + escapeHtml(footerText) + '</p>';
 
           if (!isSnapshotMode) {
             document.getElementById('btn-prev').onclick = function () {
@@ -330,7 +397,18 @@
             panel.classList.add('is-hidden');
           }
 
-          function showRegionPanel(code, value) {
+          function showRegionPanel(code, value, isRest) {
+            if (isRest) {
+              elTitle.textContent = 'Остальные регионы';
+              elCode.textContent = '—';
+              elType.textContent = 'агрегат';
+              elDistrict.textContent = '—';
+              elYear.textContent = String(yearValue);
+              elValue.textContent = formatNum(value);
+              elValue.className = value > 10 ? 'val-hot' : (value > 0 ? 'val-warm' : 'val-cool');
+              panel.classList.remove('is-hidden');
+              return;
+            }
             const info = regions[code];
             const title = (info && info.title) ? info.title : 'Неизвестный регион';
             const typeStr = (info && info.type) ? info.type : '—';
@@ -348,14 +426,20 @@
           root.querySelectorAll('.map-wrap path[data-code]').forEach(function (pathEl) {
             pathEl.addEventListener('mouseenter', function () {
               const code = pathEl.getAttribute('data-code');
-              const hf = pathEl.getAttribute('data-hover-fill');
-              if (hf) pathEl.setAttribute('fill', hf);
-              const val = vMap[code] ?? 0;
-              showRegionPanel(code, val);
+              const isRest = pathEl.getAttribute('data-rest') === '1';
+              if (!isRest) {
+                const hf = pathEl.getAttribute('data-hover-fill');
+                if (hf) pathEl.setAttribute('fill', hf);
+              }
+              const val = isRest ? restAgg : (vMap[code] ?? 0);
+              showRegionPanel(code, val, isRest);
             });
             pathEl.addEventListener('mouseleave', function (evt) {
-              const bf = pathEl.getAttribute('data-base-fill');
-              if (bf) pathEl.setAttribute('fill', bf);
+              const isRest = pathEl.getAttribute('data-rest') === '1';
+              if (!isRest) {
+                const bf = pathEl.getAttribute('data-base-fill');
+                if (bf) pathEl.setAttribute('fill', bf);
+              }
               const rel = evt.relatedTarget;
               if (rel && svg.contains(rel) && rel.closest && rel.closest('path[data-code]')) return;
               hideRegionPanel();

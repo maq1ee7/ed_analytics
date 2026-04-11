@@ -22,6 +22,7 @@ async function main(): Promise<void> {
   const {
     RUSSIA_REGION_CODES_URI,
     RussiaMapRegionValidationError,
+    RussiaMapTotalValidationError,
     getRussiaRegionCodesJson,
   } = await import('./russiaRegionCatalog.js');
 
@@ -30,6 +31,7 @@ async function main(): Promise<void> {
     years: z.array(
       z.object({
         year: z.number(),
+        total: z.number().optional(),
         regions: z.array(
           z.object({
             regionCode: z.string(),
@@ -95,7 +97,7 @@ async function main(): Promise<void> {
           'Интерактивная карта России по субъектам РФ: слайдер года, легенда, экспорт. ' +
           'Используйте для запросов вроде «карта по регионам», «добыча нефти по областям», «показатель X по субъектам РФ», сравнение лет. ' +
           'Не собирайте отдельную веб-страницу с картой, если достаточно этого инструмента. ' +
-          'Входной JSON: { "title": "…", "years": [ { "year": 2023, "regions": [ { "regionCode": "RU-MOW", "value": 100 } ] } ] } — regionCode в формате ISO 3166-2:RU, title — заголовок показателя. ' +
+          'Входной JSON: { "title": "…", "years": [ { "year": 2023, "regions": [ { "regionCode": "RU-MOW", "value": 100 } ], "total"?: число } ] } — regionCode в формате ISO 3166-2:RU; опционально total — известная сумма по всем контурам карты, остаток относится к неперечисленным субъектам. ' +
           `Список кодов и алиасов: ${RUSSIA_REGION_CODES_URI} или get_russia_region_codes. ` +
           'Ответ: JSON с dashboardUrl (пока запущен сервер) и по одному PNG на каждый год (в том же порядке, что years).',
         inputSchema: {
@@ -108,6 +110,7 @@ async function main(): Promise<void> {
               years: z.array(
                 z.object({
                   year: z.number(),
+                  total: z.number().optional(),
                   regions: z.array(
                     z.object({
                       regionCode: z.string(),
@@ -161,6 +164,14 @@ async function main(): Promise<void> {
             ],
           };
         } catch (err) {
+          if (err instanceof RussiaMapTotalValidationError) {
+            const payload = { error: err.message };
+            console.error('[mcp-dashboard] [tool] create_russia_map total:', payload);
+            return {
+              content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
+              isError: true,
+            };
+          }
           if (err instanceof RussiaMapRegionValidationError) {
             const payload = {
               error: err.message,

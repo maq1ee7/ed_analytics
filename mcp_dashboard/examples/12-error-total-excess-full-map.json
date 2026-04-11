@@ -1,0 +1,369 @@
+{
+  "data": {
+    "title": "Ошибка: излишек total при полном перечислении",
+    "years": [
+      {
+        "year": 2025,
+        "total": 189,
+        "regions": [
+          {
+            "regionCode": "RU-AD",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-AL",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-ALT",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-AMU",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-ARK",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-AST",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-BA",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-BEL",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-BRY",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-BU",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-CE",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-CHE",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-CHU",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-CR",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-CU",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-DA",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-DON",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-HR",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-IN",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-IRK",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-IVA",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KAM",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KB",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KC",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KDA",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KEM",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KGD",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KGN",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KHA",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KHM",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KIR",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KK",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KL",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KLU",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KO",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KOS",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KR",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KRS",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-KYA",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-LEN",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-LIP",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-LUG",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-MAG",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-ME",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-MO",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-MOS",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-MOW",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-MUR",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-NEN",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-NGR",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-NIZ",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-NVS",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-OMS",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-ORE",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-ORL",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-PER",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-PNZ",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-PRI",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-PSK",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-ROS",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-RYA",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-SA",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-SAK",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-SAM",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-SAR",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-SE",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-SEV",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-SMO",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-SPE",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-STA",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-SVE",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-TA",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-TAM",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-TOM",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-TUL",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-TVE",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-TY",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-TYU",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-UD",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-ULY",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-VGG",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-VLA",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-VLG",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-VOR",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-YAN",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-YAR",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-YEV",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-ZAB",
+            "value": 1
+          },
+          {
+            "regionCode": "RU-ZP",
+            "value": 1
+          }
+        ]
+      }
+    ]
+  }
+}
