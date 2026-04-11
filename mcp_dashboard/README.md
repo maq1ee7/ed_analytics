@@ -36,9 +36,10 @@ npm run dev
 ## Обновление данных регионов
 
 Данные регионов (коды, названия, координаты для карты) лежат в `data/regions.json` и `data/regionCoordinates.json`.  
-Чтобы обновить их из основного проекта ed_analytics, из **корня репозитория** выполните:
+Чтобы обновить их из основного стека ED Analytics, перейдите в **`analytics/`** и выполните:
 
 ```bash
+cd analytics
 npx tsx scripts/export-regions-for-mcp-dashboard.ts
 ```
 
@@ -69,7 +70,15 @@ Settings (Cmd/Ctrl + ,) → **Tools & MCP** → Add new MCP server:
 
 Если MCP Dashboard на другом хосте или порту — замените URL (порт по умолчанию `3100`). После сохранения полностью перезапустите Cursor, чтобы подхватить новый MCP сервер.
 
-## MCP Tool
+## MCP: инструменты и справочник регионов
+
+Краткая инструкция для LLM-агентов: [`docs/MCP_AGENT_INSTRUCTIONS.md`](docs/MCP_AGENT_INSTRUCTIONS.md).
+
+- **Resource** `dashboard://mcp-dashboard/russia-region-codes` — JSON: коды ISO 3166-2:RU, названия субъектов, алиасы (ХМАО, Югра и т.д.).
+- **Инструмент** `get_russia_region_codes` — тот же JSON (удобно, если клиент не читает resources).
+- **Инструмент** `create_russia_map` — карта по этим кодам; неизвестные коды возвращаются с подсказками `possibleMatches`.
+
+## MCP Tool `create_russia_map`
 
 - **Имя**: `create_russia_map`
 - **Вход**: JSON `data` в формате:

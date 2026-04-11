@@ -6,6 +6,9 @@
 
 set -e  # Прекращаем выполнение при ошибке
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
 # =================================
 # КОНФИГУРАЦИЯ
 # =================================
@@ -39,8 +42,8 @@ while getopts "fh" opt; do
             echo "  -h    Показать эту справку"
             echo ""
             echo "Примеры:"
-            echo "  sh scripts/deploy.sh       # Быстрый деплой с кэшем"
-            echo "  sh scripts/deploy.sh -f    # Полная пересборка без кэша"
+            echo "  cd analytics && sh scripts/deploy.sh       # Быстрый деплой с кэшем"
+            echo "  cd analytics && sh scripts/deploy.sh -f    # Полная пересборка без кэша"
             exit 0
             ;;
         \?)
@@ -54,11 +57,12 @@ done
 echo "🚀 Начинаем БЫСТРЫЙ деплой ED Analytics на сервер..."
 echo "📍 Сервер: ${SERVER_USER}@${SERVER_IP}"
 echo "🗂️  Локальная папка: ${LOCAL_DIR}"
+echo "💡 Запускайте из каталога analytics (рядом с backend, frontend, docker-compose.prod.yml)."
 if [ "$FULL_REBUILD" = "true" ]; then
     echo "⚠️  Режим: ПОЛНАЯ ПЕРЕСБОРКА (медленно)"
 else
     echo "⚡ Режим: БЫСТРАЯ ПЕРЕСБОРКА (с использованием кэша)"
-    echo "💡 Для полной пересборки: sh scripts/deploy.sh -f"
+    echo "💡 Для полной пересборки: cd analytics && sh scripts/deploy.sh -f"
 fi
 echo ""
 
@@ -193,7 +197,7 @@ echo "6️⃣ Копируем Docker и скрипты..."
 scp -i "$SSH_KEY" \
     "$LOCAL_DIR/docker-compose.prod.yml" \
     "$LOCAL_DIR/README.md" \
-    "$LOCAL_DIR/.gitignore" \
+    "$REPO_ROOT/.gitignore" \
     "$SERVER_USER@$SERVER_IP:~/$PROJECT_DIR/"
 
 scp -i "$SSH_KEY" -r \
@@ -300,6 +304,6 @@ echo "   ⚠️  TODO: Не забудьте заменить TELEGRAM_BOT_TOKEN
 echo ""
 if [ "$FULL_REBUILD" != "true" ]; then
     echo "💡 Совет: Следующий деплой будет ещё быстрее благодаря кэшу Docker!"
-    echo "⚠️  Для полной очистки кэша используйте: sh scripts/deploy.sh -f"
+    echo "⚠️  Для полной очистки кэша: cd analytics && sh scripts/deploy.sh -f"
     echo ""
 fi

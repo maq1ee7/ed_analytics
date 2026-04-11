@@ -14,8 +14,9 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}🚀 Запуск фронтенда ED Analytics...${NC}"
 echo ""
 
-# Определяем корневую папку проекта (на уровень выше от scripts)
+# Корень стека analytics (backend, frontend, …); родитель — корень монорепозитория
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd "$PROJECT_ROOT/.." && pwd)"
 FRONTEND_DIR="$PROJECT_ROOT/frontend"
 
 echo -e "${BLUE}📂 Корневая папка проекта: ${PROJECT_ROOT}${NC}"
@@ -105,10 +106,15 @@ echo ""
 # Проверяем переменные окружения
 echo -e "${BLUE}🔧 Настраиваем подключение к реальному бэкенду...${NC}"
 
-# Загружаем переменные из .env в корне проекта если он существует
+# Загружаем .env из analytics/ или из корня монорепозитория (обратная совместимость)
+ENV_FILE=""
 if [ -f "$PROJECT_ROOT/.env" ]; then
-    # Экспортируем переменные из .env (игнорируем комментарии и пустые строки)
-    export $(grep -v '^#' "$PROJECT_ROOT/.env" | grep -v '^$' | xargs)
+    ENV_FILE="$PROJECT_ROOT/.env"
+elif [ -f "$REPO_ROOT/.env" ]; then
+    ENV_FILE="$REPO_ROOT/.env"
+fi
+if [ -n "$ENV_FILE" ]; then
+    export $(grep -v '^#' "$ENV_FILE" | grep -v '^$' | xargs)
 fi
 
 # URL реального бэкенда (из продакшен конфигурации)
